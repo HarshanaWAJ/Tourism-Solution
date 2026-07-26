@@ -1,8 +1,8 @@
 import { useEffect, useState } from "react";
-import { api } from "../../api/client.js";
+import { api, imageUrl } from "../../api/client.js";
 import TaxiFleet from "./TaxiFleet.jsx";
 
-const TABS = ["Overview", "Verification", "Disputes", "Reviews", "Taxi Fleet"];
+const TABS = ["Overview", "Verification", "Places", "Disputes", "Reviews", "Taxi Fleet"];
 
 export default function AdminCenter() {
   const [tab, setTab] = useState("Overview");
@@ -23,6 +23,7 @@ export default function AdminCenter() {
 
       {tab === "Overview" && <Overview />}
       {tab === "Verification" && <Verification />}
+      {tab === "Places" && <PlaceSubmissions />}
       {tab === "Disputes" && <Disputes />}
       {tab === "Reviews" && <ReviewModeration />}
       {tab === "Taxi Fleet" && <TaxiFleet />}
@@ -40,6 +41,7 @@ function Overview() {
     { label: "Vendors", value: data.vendorCount },
     { label: "Verified vendors", value: data.verifiedVendorCount },
     { label: "Active listings", value: data.listingCount },
+    { label: "Pending places", value: data.pendingPlaceSubmissions },
     { label: "Open disputes", value: data.openDisputes },
     { label: "Drivers", value: data.driverCount },
     { label: "Drivers online", value: data.onlineDriverCount },
@@ -103,6 +105,87 @@ function Verification() {
           </div>
         );
       })}
+    </div>
+  );
+}
+
+function PlaceSubmissions() {
+  const [submissions, setSubmissions] = useState(null);
+  const [statusFilter, setStatusFilter] = useState("pending");
+
+  async function refresh() {
+    setSubmissions(null);
+    setSubmissions((await api.adminPlaceSubmissions(statusFilter)).submissions);
+  }
+  useEffect(() => { refresh(); }, [statusFilter]); // eslint-disable-line
+
+  async function decide(id, status) {
+    const reviewNotes = status === "rejected" ? (prompt("Reason for rejecting (optional):") || "") : undefined;
+    await api.adminReviewPlace(id, { status, reviewNotes });
+    refresh();
+  }
+
+  return (
+    <div>
+      <div className="flex gap-1 bg-white border border-teal-900/10 rounded-full p-1 mb-6 w-fit">
+        {["pending", "approved", "rejected", "all"].map((s) => (
+          <button key={s} onClick={() => setStatusFilter(s)}
+            className={`px-4 py-1.5 rounded-full text-xs font-medium capitalize transition ${
+              statusFilter === s ? "bg-teal-900 text-sand-50" : "text-teal-900/70"
+            }`}>
+            {s}
+          </button>
+        ))}
+      </div>
+
+      {!submissions && <p className="text-teal-950/50">Loading…</p>}
+      {submissions && submissions.length === 0 && (
+        <p className="text-teal-950/50">No {statusFilter !== "all" ? statusFilter : ""} place suggestions.</p>
+      )}
+
+      <div className="space-y-4">
+        {submissions?.map((s) => (
+          <div key={s._id} className="border border-teal-900/10 rounded-2xl p-5 bg-white">
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <p className="font-medium">{s.title} <span className="text-xs font-normal text-teal-950/50 capitalize">· {s.category}</span></p>
+                <p className="text-sm text-teal-950/60">{s.location?.city}{s.location?.address ? `, ${s.location.address}` : ""}</p>
+                <p className="text-xs text-teal-950/40 mt-1">Suggested by {s.submittedBy?.name} ({s.submittedBy?.email})</p>
+                {s.description && <p className="text-sm text-teal-950/70 mt-2 max-w-xl">{s.description}</p>}
+                {s.searchQueryContext && (
+                  <p className="text-xs text-teal-950/40 mt-1">Original search: "{s.searchQueryContext}"</p>
+                )}
+              </div>
+              <span className={`text-xs font-semibold px-2.5 py-1 rounded-full capitalize shrink-0 ${
+                s.status === "approved" ? "bg-teal-800 text-sand-50" :
+                s.status === "rejected" ? "bg-red-100 text-red-600" : "bg-saffron-100 text-saffron-600"
+              }`}>
+                {s.status}
+              </span>
+            </div>
+
+            {s.images?.length > 0 && (
+              <div className="flex gap-2 mt-3 flex-wrap">
+                {s.images.map((img) => (
+                  <img key={img._id} src={imageUrl(img._id)} alt="" className="h-20 w-20 object-cover rounded-lg" />
+                ))}
+              </div>
+            )}
+
+            {s.status === "pending" && (
+              <div className="flex gap-2 mt-4">
+                <button onClick={() => decide(s._id, "approved")} className="text-xs font-medium bg-teal-900 text-sand-50 rounded-full px-4 py-2">
+                  Approve &amp; publish
+                </button>
+                <button onClick={() => decide(s._id, "rejected")} className="text-xs font-medium border border-teal-900/20 rounded-full px-4 py-2">
+                  Reject
+                </button>
+              </div>
+            )}
+            {s.reviewNotes && <p className="text-xs text-teal-950/50 mt-3">Note: {s.reviewNotes}</p>}
+          </div>
+        ))}
+      </div>
     </div>
   );
 }

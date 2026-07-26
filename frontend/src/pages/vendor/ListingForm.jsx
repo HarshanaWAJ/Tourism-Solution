@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { api } from "../../api/client.js";
+import { api, imageUrl } from "../../api/client.js";
 
 const CATEGORIES = ["hotel", "guide", "transport", "restaurant", "activity", "attraction", "package"];
 const PRICE_UNITS = ["per_night", "per_person", "per_trip", "per_hour", "flat"];
@@ -29,6 +29,8 @@ function toFormState(listing) {
 export default function ListingForm({ listing, onClose, onSaved }) {
   const isEditing = Boolean(listing);
   const [form, setForm] = useState(() => toFormState(listing));
+  const [existingImages, setExistingImages] = useState(listing?.images || []);
+  const [newFiles, setNewFiles] = useState([]);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
 
@@ -42,6 +44,12 @@ export default function ListingForm({ listing, onClose, onSaved }) {
         .map((t) => t.trim())
         .filter(Boolean);
 
+      let images = existingImages;
+      if (newFiles.length > 0) {
+        const uploaded = await api.uploadImages(newFiles, "listing");
+        images = [...existingImages, ...uploaded.map((i) => i.url)];
+      }
+
       if (isEditing) {
         await api.updateListing(listing._id, {
           title: form.title,
@@ -51,6 +59,7 @@ export default function ListingForm({ listing, onClose, onSaved }) {
           currency: form.currency,
           priceUnit: form.priceUnit,
           tags,
+          images,
           isActive: form.isActive,
         });
       } else {
@@ -62,6 +71,7 @@ export default function ListingForm({ listing, onClose, onSaved }) {
           currency: form.currency,
           priceUnit: form.priceUnit,
           tags,
+          images,
           location: { label: form.title, city: form.city, region: form.region },
         });
 
@@ -115,6 +125,24 @@ export default function ListingForm({ listing, onClose, onSaved }) {
                 className="rounded-xl border border-teal-900/15 px-3 py-2 text-sm" />
             </div>
           )}
+
+          <div>
+            <label className="text-sm font-medium text-teal-900 block mb-1">Photos</label>
+            {existingImages.length > 0 && (
+              <div className="flex gap-2 mb-2 flex-wrap">
+                {existingImages.map((img, idx) => (
+                  <img key={idx} src={imageUrl(img)} alt="" className="h-16 w-16 object-cover rounded-lg" />
+                ))}
+              </div>
+            )}
+            <input
+              type="file"
+              accept="image/png,image/jpeg,image/webp,image/gif"
+              multiple
+              onChange={(e) => setNewFiles(e.target.files)}
+              className="text-sm"
+            />
+          </div>
 
           <input placeholder="Tags (comma separated, e.g. beach, family-friendly)" value={form.tags}
             onChange={(e) => setForm({ ...form, tags: e.target.value })}

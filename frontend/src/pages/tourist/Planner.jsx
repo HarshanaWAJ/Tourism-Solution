@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { api } from "../../api/client.js";
 
 const INTERESTS = ["culture", "wildlife", "beach", "hiking", "food", "surfing", "family-friendly"];
@@ -15,6 +15,50 @@ export default function Planner() {
   ]);
   const [chatBusy, setChatBusy] = useState(false);
 
+  const [savedTrips, setSavedTrips] = useState([]);
+  const [savingBusy, setSavingBusy] = useState(false);
+
+  async function loadSavedTrips() {
+    try {
+      const res = await api.myItineraries("confirmed");
+      setSavedTrips(res.itineraries);
+    } catch {
+      // non-fatal — sidebar list just stays empty
+    }
+  }
+  useEffect(() => { loadSavedTrips(); }, []);
+
+  function removeItem(idx) {
+    setItinerary((it) => ({ ...it, items: it.items.filter((_, i) => i !== idx) }));
+  }
+
+  async function acceptItinerary() {
+    setSavingBusy(true);
+    setError("");
+    try {
+      if (itinerary.items.length !== (itinerary._originalCount ?? itinerary.items.length)) {
+        await api.updateItinerary(itinerary._id, { items: itinerary.items });
+      }
+      const res = await api.acceptItinerary(itinerary._id);
+      setItinerary(res.itinerary);
+      loadSavedTrips();
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setSavingBusy(false);
+    }
+  }
+
+  async function discardItinerary() {
+    if (!itinerary?._id) return;
+    try {
+      await api.discardItinerary(itinerary._id);
+    } catch {
+      // ignore — worst case it just stays as an orphaned draft
+    }
+    setItinerary(null);
+  }
+
   function toggleInterest(i) {
     setForm((f) => ({
       ...f,
@@ -28,7 +72,7 @@ export default function Planner() {
     setError("");
     try {
       const res = await api.planTrip(form);
-      setItinerary(res.itinerary);
+      setItinerary({ ...res.itinerary, _originalCount: res.itinerary.items.length });
     } catch (err) {
       setError(err.message);
     } finally {
@@ -101,18 +145,75 @@ export default function Planner() {
         </form>
 
         {itinerary && (
-          <div className="border border-teal-900/10 rounded-2xl p-5 bg-white">
-            <h3 className="font-display text-xl mb-3">{itinerary.title}</h3>
+          <div className="border border-teal-900/10 rounded-2xl p-5 bg-white mb-6">
+            <div className="flex items-center justify-between mb-3">
+              <h3 className="font-display text-xl">{itinerary.title}</h3>
+              <span className={`text-xs font-semibold px-2.5 py-1 rounded-full ${
+                itinerary.status === "confirmed" ? "bg-teal-800 text-sand-50" : "bg-saffron-100 text-saffron-600"
+              }`}>
+                {itinerary.status === "confirmed" ? "Saved" : "Draft — review before saving"}
+              </span>
+            </div>
+
             {Array.from(new Set(itinerary.items.map((i) => i.day))).map((day) => (
               <div key={day} className="mb-4">
                 <p className="text-xs uppercase tracking-widest text-saffron-600 font-semibold mb-1">Day {day}</p>
                 <ul className="space-y-1 text-sm text-teal-950/80">
-                  {itinerary.items.filter((i) => i.day === day).map((i, idx) => (
-                    <li key={idx}>• {i.title} <span className="text-teal-950/50">— {i.notes}</span></li>
+                  {itinerary.items.map((i, idx) => i.day === day && (
+                    <li key={idx} className="flex items-center justify-between gap-2">
+                      <span>• {i.title} <span className="text-teal-950/50">— {i.notes}</span></span>
+                      {itinerary.status !== "confirmed" && (
+                        <button
+                          type="button"
+                          onClick={() => removeItem(idx)}
+                          className="text-xs text-red-500 hover:underline shrink-0"
+                        >
+                          remove
+                        </button>
+                      )}
+                    </li>
                   ))}
                 </ul>
               </div>
             ))}
+
+            {itinerary.status !== "confirmed" ? (
+              <div className="flex gap-2 mt-4 pt-4 border-t border-teal-900/10">
+                <button
+                  onClick={acceptItinerary}
+                  disabled={savingBusy || itinerary.items.length === 0}
+                  className="flex-1 bg-teal-900 text-sand-50 rounded-full py-2.5 text-sm font-medium hover:bg-teal-800 transition disabled:opacity-60"
+                >
+                  {savingBusy ? "Saving…" : "Looks good — save my trip"}
+                </button>
+                <button
+                  onClick={discardItinerary}
+                  className="text-sm text-teal-900/60 px-4 hover:text-teal-900"
+                >
+                  Discard
+                </button>
+              </div>
+            ) : (
+              <p className="text-xs text-teal-950/50 mt-3 pt-3 border-t border-teal-900/10">
+                Saved to My Trips. Generate a new plan any time to add another.
+              </p>
+            )}
+          </div>
+        )}
+
+        {savedTrips.length > 0 && (
+          <div>
+            <h3 className="font-display text-lg mb-2">Your saved trips</h3>
+            <ul className="space-y-2">
+              {savedTrips.map((t) => (
+                <li key={t._id} className="text-sm border border-teal-900/10 rounded-xl px-4 py-2.5 flex justify-between bg-white">
+                  <span>{t.title}</span>
+                  <span className="text-teal-950/50">
+                    {new Date(t.startDate).toLocaleDateString()} – {new Date(t.endDate).toLocaleDateString()}
+                  </span>
+                </li>
+              ))}
+            </ul>
           </div>
         )}
       </div>

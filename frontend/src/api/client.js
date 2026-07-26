@@ -24,6 +24,29 @@ export async function apiFetch(path, { method = "GET", body, auth = true } = {})
   return data;
 }
 
+export function imageUrl(idOrPath) {
+  if (!idOrPath) return null;
+  if (typeof idOrPath === "string" && idOrPath.startsWith("/api/")) {
+    return `${API_URL.replace(/\/api$/, "")}${idOrPath}`;
+  }
+  return `${API_URL}/images/${idOrPath}`;
+}
+
+async function uploadImages(files, context = "general") {
+  const form = new FormData();
+  [...files].forEach((f) => form.append("images", f));
+  form.append("context", context);
+
+  const headers = {};
+  const token = getToken();
+  if (token) headers.Authorization = `Bearer ${token}`;
+
+  const res = await fetch(`${API_URL}/images`, { method: "POST", headers, body: form });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(data.error || `Upload failed (${res.status})`);
+  return data.images; // [{ id, url }]
+}
+
 export const api = {
   registerTourist: (payload) => apiFetch("/auth/register/tourist", { method: "POST", body: payload, auth: false }),
   registerVendor: (payload) => apiFetch("/auth/register/vendor", { method: "POST", body: payload, auth: false }),
@@ -51,7 +74,16 @@ export const api = {
 
   planTrip: (payload) => apiFetch("/ai/plan-trip", { method: "POST", body: payload }),
   chat: (payload) => apiFetch("/ai/chat", { method: "POST", body: payload }),
-  myItineraries: () => apiFetch("/ai/itineraries/mine"),
+  myItineraries: (status) => apiFetch(`/ai/itineraries/mine${status ? `?status=${status}` : ""}`),
+  updateItinerary: (id, payload) => apiFetch(`/ai/itineraries/${id}`, { method: "PATCH", body: payload }),
+  acceptItinerary: (id) => apiFetch(`/ai/itineraries/${id}/accept`, { method: "PATCH" }),
+  discardItinerary: (id) => apiFetch(`/ai/itineraries/${id}`, { method: "DELETE" }),
+
+  uploadImages,
+  submitPlace: (payload) => apiFetch("/places", { method: "POST", body: payload }),
+  myPlaceSubmissions: () => apiFetch("/places/mine"),
+  adminPlaceSubmissions: (status = "pending") => apiFetch(`/admin/place-submissions?status=${status}`),
+  adminReviewPlace: (id, payload) => apiFetch(`/admin/place-submissions/${id}`, { method: "PATCH", body: payload }),
 
   alerts: (params = {}) => apiFetch(`/support/alerts?${new URLSearchParams(params).toString()}`, { auth: false }),
   createTicket: (payload) => apiFetch("/support/tickets", { method: "POST", body: payload }),

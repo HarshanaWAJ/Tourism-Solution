@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { api } from "../../api/client.js";
+import { api, imageUrl } from "../../api/client.js";
 import { useAuth } from "../../context/AuthContext.jsx";
 import TrustBadge from "../../components/TrustBadge.jsx";
 
@@ -44,6 +44,19 @@ export default function ListingDetail() {
       <h1 className="font-display text-4xl font-semibold mt-1 mb-3">{listing.title}</h1>
       <p className="text-teal-950/60 mb-4">{listing.location?.city}, {listing.location?.region}</p>
       <TrustBadge vendor={listing.vendor} />
+
+      {listing.images?.length > 0 && (
+        <div className="grid grid-cols-3 gap-3 mt-6 max-w-2xl">
+          {listing.images.slice(0, 6).map((img, idx) => (
+            <img
+              key={idx}
+              src={imageUrl(img)}
+              alt={`${listing.title} photo ${idx + 1}`}
+              className="h-32 w-full object-cover rounded-xl"
+            />
+          ))}
+        </div>
+      )}
 
       <p className="text-teal-950/80 leading-relaxed my-6 max-w-2xl">{listing.description}</p>
 

@@ -86,16 +86,58 @@ router.post("/plan-trip", requireAuth, requireRole("tourist"), async (req, res) 
     items = rulesBasedPlan(candidates, days);
   }
 
+  // Saved as a draft first — the tourist reviews it in the planner UI and
+  // must explicitly accept it (PATCH /itineraries/:id/accept) before it
+  // counts as a saved trip.
   const itinerary = await Itinerary.create({
     tourist: req.user.id,
     title: `${days}-day Sri Lanka trip`,
     startDate,
     endDate,
     generatedByAI: true,
+    status: "draft",
     items,
   });
 
   res.status(201).json({ itinerary });
+});
+
+// Tourist edits the AI-proposed items while still reviewing (e.g. drops a stop).
+router.patch("/itineraries/:id", requireAuth, requireRole("tourist"), async (req, res) => {
+  const itinerary = await Itinerary.findOne({ _id: req.params.id, tourist: req.user.id });
+  if (!itinerary) return res.status(404).json({ error: "Itinerary not found" });
+  if (itinerary.status === "confirmed") {
+    return res.status(400).json({ error: "This itinerary is already saved; edits aren't allowed after acceptance" });
+  }
+
+  if (req.body.title) itinerary.title = req.body.title;
+  if (req.body.items) itinerary.items = req.body.items;
+  await itinerary.save();
+
+  res.json({ itinerary });
+});
+
+// Tourist reviews the draft and explicitly saves/accepts it as their trip plan.
+router.patch("/itineraries/:id/accept", requireAuth, requireRole("tourist"), async (req, res) => {
+  const itinerary = await Itinerary.findOne({ _id: req.params.id, tourist: req.user.id });
+  if (!itinerary) return res.status(404).json({ error: "Itinerary not found" });
+
+  itinerary.status = "confirmed";
+  itinerary.acceptedAt = new Date();
+  await itinerary.save();
+
+  res.json({ itinerary });
+});
+
+// Discard a draft the tourist doesn't want to keep.
+router.delete("/itineraries/:id", requireAuth, requireRole("tourist"), async (req, res) => {
+  const itinerary = await Itinerary.findOne({ _id: req.params.id, tourist: req.user.id });
+  if (!itinerary) return res.status(404).json({ error: "Itinerary not found" });
+  if (itinerary.status === "confirmed") {
+    return res.status(400).json({ error: "Saved trips can't be deleted from here" });
+  }
+  await itinerary.deleteOne();
+  res.json({ success: true });
 });
 
 // Lightweight multilingual chat endpoint for the AI assistant widget.
@@ -119,7 +161,9 @@ router.post("/chat", requireAuth, async (req, res) => {
 });
 
 router.get("/itineraries/mine", requireAuth, requireRole("tourist"), async (req, res) => {
-  const itineraries = await Itinerary.find({ tourist: req.user.id }).sort("-createdAt");
+  const filter = { tourist: req.user.id };
+  if (req.query.status) filter.status = req.query.status;
+  const itineraries = await Itinerary.find(filter).sort("-createdAt");
   res.json({ itineraries });
 });
 

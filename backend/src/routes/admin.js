@@ -5,8 +5,10 @@ import Dispute from "../models/Dispute.js";
 import Booking from "../models/Booking.js";
 import User from "../models/User.js";
 import Listing from "../models/Listing.js";
+import Location from "../models/Location.js";
 import Driver from "../models/Driver.js";
 import Ride from "../models/Ride.js";
+import PlaceSubmission from "../models/PlaceSubmission.js";
 import { requireAuth, requireRole } from "../middleware/auth.js";
 
 const router = Router();
@@ -135,6 +137,79 @@ router.patch("/disputes/:id", async (req, res) => {
   res.json({ dispute });
 });
 
+// --- Place suggestions: tourists propose places found via Discover search,
+// admins approve them (with their images) into the real catalog ---
+router.get("/place-submissions", async (req, res) => {
+  const { status = "pending" } = req.query;
+  const submissions = await PlaceSubmission.find(status === "all" ? {} : { status })
+    .sort("-createdAt")
+    .populate("submittedBy", "name email")
+    .populate("images")
+    .populate("resultingListing");
+  res.json({ submissions });
+});
+
+router.patch("/place-submissions/:id", async (req, res) => {
+  const { status, reviewNotes } = req.body; // approved | rejected
+  const submission = await PlaceSubmission.findById(req.params.id).populate("images");
+  if (!submission) return res.status(404).json({ error: "Submission not found" });
+  if (submission.status !== "pending") {
+    return res.status(400).json({ error: "This submission has already been reviewed" });
+  }
+
+  submission.status = status;
+  submission.reviewNotes = reviewNotes;
+  submission.reviewedBy = req.user.id;
+  submission.reviewedAt = new Date();
+
+  if (status === "approved") {
+    // Admin-curated places are grouped under a single platform vendor so
+    // they show up in Discover like any other verified listing.
+    let platformVendor = await Vendor.findOne({ businessName: "Ceylon Way Curated Places" });
+    if (!platformVendor) {
+      platformVendor = await Vendor.create({
+        owner: req.user.id,
+        businessName: "Ceylon Way Curated Places",
+        category: "attraction",
+        description: "Places suggested by travelers and verified by the Ceylon Way team.",
+        verificationStatus: "verified",
+        verificationBadges: ["business_registration"],
+      });
+    }
+
+    const loc = await Location.create({
+      label: submission.location.label,
+      address: submission.location.address,
+      city: submission.location.city,
+      region: submission.location.region,
+      country: submission.location.country || "Sri Lanka",
+      geo:
+        submission.location.lat != null && submission.location.lng != null
+          ? { type: "Point", coordinates: [submission.location.lng, submission.location.lat] }
+          : undefined,
+    });
+
+    const listing = await Listing.create({
+      vendor: platformVendor._id,
+      title: submission.title,
+      category: submission.category,
+      description: submission.description,
+      location: loc._id,
+      images: submission.images.map((img) => `/api/images/${img._id}`),
+      basePrice: 0,
+      currency: "USD",
+      priceUnit: "flat",
+      tags: ["community-suggested"],
+      isActive: true,
+    });
+
+    submission.resultingListing = listing._id;
+  }
+
+  await submission.save();
+  res.json({ submission });
+});
+
 // --- Analytics / reporting ---
 router.get("/analytics/overview", async (req, res) => {
   const [
@@ -147,6 +222,7 @@ router.get("/analytics/overview", async (req, res) => {
     driverCount,
     onlineDriverCount,
     rideStats,
+    pendingPlaceSubmissions,
   ] = await Promise.all([
     User.countDocuments({ role: "tourist" }),
     Vendor.countDocuments(),
@@ -161,6 +237,7 @@ router.get("/analytics/overview", async (req, res) => {
     Ride.aggregate([
       { $group: { _id: "$status", count: { $sum: 1 }, revenue: { $sum: "$fareFinal" } } },
     ]),
+    PlaceSubmission.countDocuments({ status: "pending" }),
   ]);
 
   res.json({
@@ -173,6 +250,7 @@ router.get("/analytics/overview", async (req, res) => {
     driverCount,
     onlineDriverCount,
     ridesByStatus: rideStats,
+    pendingPlaceSubmissions,
   });
 });
 

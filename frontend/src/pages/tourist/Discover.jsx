@@ -1,7 +1,8 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import { api } from "../../api/client.js";
+import { api, imageUrl } from "../../api/client.js";
 import TrustBadge from "../../components/TrustBadge.jsx";
+import SuggestPlaceForm from "../../components/SuggestPlaceForm.jsx";
 
 const CATEGORIES = ["", "hotel", "guide", "transport", "restaurant", "activity", "attraction"];
 
@@ -68,8 +69,20 @@ export default function Discover() {
           <Link
             to={`/listing/${listing._id}`}
             key={listing._id}
-            className="rounded-2xl border border-teal-900/10 p-5 hover:shadow-lg transition bg-white"
+            className="rounded-2xl border border-teal-900/10 overflow-hidden hover:shadow-lg transition bg-white"
           >
+            {listing.images?.[0] ? (
+              <img
+                src={imageUrl(listing.images[0])}
+                alt={listing.title}
+                className="h-40 w-full object-cover"
+              />
+            ) : (
+              <div className="h-40 w-full bg-teal-50 flex items-center justify-center text-teal-900/30 text-sm">
+                No photo yet
+              </div>
+            )}
+            <div className="p-5">
             <span className="text-xs uppercase tracking-widest text-saffron-600 font-semibold">{listing.category}</span>
             <h3 className="font-display text-xl mt-1 mb-2">{listing.title}</h3>
             <p className="text-sm text-teal-950/60 mb-3">{listing.location?.city}, {listing.location?.region}</p>
@@ -83,8 +96,18 @@ export default function Discover() {
               )}
             </div>
             <div className="mt-3"><TrustBadge vendor={listing.vendor} /></div>
+            </div>
           </Link>
         ))}
+      </div>
+
+      <div className="mt-10 flex flex-col items-start gap-3">
+        <p className="text-sm text-teal-950/60">
+          {results.length === 0
+            ? "Know a great spot that's missing?"
+            : "Not what you were looking for?"}
+        </p>
+        <SuggestPlaceForm initialQuery={filters.query} onSubmitted={runSearch} />
       </div>
     </div>
   );

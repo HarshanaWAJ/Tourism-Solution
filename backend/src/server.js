@@ -20,6 +20,8 @@ import paymentRoutes from "./routes/payments.js";
 import messageRoutes from "./routes/messages.js";
 import driverRoutes from "./routes/drivers.js";
 import rideRoutes from "./routes/rides.js";
+import imageRoutes from "./routes/images.js";
+import placeRoutes from "./routes/places.js";
 import stripeWebhookHandler from "./routes/stripeWebhook.js";
 
 const app = express();
@@ -51,6 +53,8 @@ app.use("/api/payments", paymentRoutes);
 app.use("/api/messages", messageRoutes);
 app.use("/api/drivers", driverRoutes);
 app.use("/api/rides", rideRoutes);
+app.use("/api/images", imageRoutes);
+app.use("/api/places", placeRoutes);
 
 app.use((req, res) => res.status(404).json({ error: "Not found" }));
 
