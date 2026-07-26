@@ -10,6 +10,8 @@ import Driver from "../models/Driver.js";
 import Ride from "../models/Ride.js";
 import PlaceSubmission from "../models/PlaceSubmission.js";
 import { requireAuth, requireRole } from "../middleware/auth.js";
+import FareConfig from "../models/FareConfig.js";
+import { getAllFareConfigs } from "../utils/fare.js";
 
 const router = Router();
 router.use(requireAuth, requireRole("admin"));
@@ -252,6 +254,49 @@ router.get("/analytics/overview", async (req, res) => {
     ridesByStatus: rideStats,
     pendingPlaceSubmissions,
   });
+});
+
+// --- Fare pricing configuration ---
+
+// GET all vehicle fare configs (merged over defaults)
+router.get("/fare-config", async (req, res) => {
+  try {
+    const configs = await getAllFareConfigs();
+    res.json({ configs });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// PUT (upsert) fare config for a specific vehicle type
+router.put("/fare-config/:vehicleType", async (req, res) => {
+  const { vehicleType } = req.params;
+  const ALLOWED = ["tuk_tuk", "car", "van", "bike"];
+  if (!ALLOWED.includes(vehicleType)) {
+    return res.status(400).json({ error: `vehicleType must be one of: ${ALLOWED.join(", ")}` });
+  }
+
+  const { firstKmPrice, perKmPrice, waitingChargePerMin, minimumFare, currency } = req.body;
+
+  if (firstKmPrice == null || perKmPrice == null || waitingChargePerMin == null) {
+    return res.status(400).json({ error: "firstKmPrice, perKmPrice, and waitingChargePerMin are required" });
+  }
+
+  const config = await FareConfig.findOneAndUpdate(
+    { vehicleType },
+    {
+      vehicleType,
+      firstKmPrice: Number(firstKmPrice),
+      perKmPrice: Number(perKmPrice),
+      waitingChargePerMin: Number(waitingChargePerMin),
+      minimumFare: Number(minimumFare || 0),
+      currency: currency || "USD",
+      updatedBy: req.user.id,
+    },
+    { upsert: true, new: true, setDefaultsOnInsert: true }
+  );
+
+  res.json({ config });
 });
 
 export default router;

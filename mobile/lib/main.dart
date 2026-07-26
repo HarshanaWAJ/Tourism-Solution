@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_stripe/flutter_stripe.dart';
 import 'package:provider/provider.dart';
 import 'config.dart';
+import 'theme/app_theme.dart';
 import 'state/auth_provider.dart';
 import 'screens/splash_screen.dart';
 
@@ -26,10 +27,7 @@ class CeylonWayTaxiApp extends StatelessWidget {
       child: MaterialApp(
         title: 'Ceylon Way Taxi',
         debugShowCheckedModeBanner: false,
-        theme: ThemeData(
-          useMaterial3: true,
-          colorSchemeSeed: const Color(0xFF0F4C4C), // matches the web app's teal brand
-        ),
+        theme: AppTheme.lightTheme,
         home: const SplashScreen(),
       ),
     );

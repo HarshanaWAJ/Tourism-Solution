@@ -54,8 +54,22 @@ const rideSchema = new mongoose.Schema(
     cancelReason: { type: String },
 
     acceptedAt: { type: Date },
+    arrivedAt: { type: Date },   // driver arrived at pickup
     startedAt: { type: Date },
     completedAt: { type: Date },
+
+    // Waiting seconds = time between arrivedAt and startedAt (if both set)
+    // Can also be set manually by the driver via PATCH /:id/status body.waitingSeconds
+    waitingSeconds: { type: Number, default: 0, min: 0 },
+
+    // Itemised breakdown stored at completion
+    fareBreakdown: {
+      distanceKm:          { type: Number },
+      firstKmCharge:       { type: Number },
+      additionalKmCharge:  { type: Number },
+      waitingMinutes:      { type: Number },
+      waitingCharge:       { type: Number },
+    },
 
     touristRating: { type: Number, min: 1, max: 5 },
     touristReview: { type: String },

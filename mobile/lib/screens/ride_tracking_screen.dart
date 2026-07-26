@@ -5,6 +5,8 @@ import 'package:latlong2/latlong.dart' as ll;
 import 'package:flutter_stripe/flutter_stripe.dart';
 import '../services/api_client.dart';
 import '../services/socket_service.dart';
+import '../theme/app_theme.dart';
+import '../widgets/custom_banner.dart';
 
 class RideTrackingScreen extends StatefulWidget {
   final String rideId;
@@ -28,8 +30,6 @@ class _RideTrackingScreenState extends State<RideTrackingScreen> {
     super.initState();
     _load();
     _joinSocket();
-    // Socket pushes are the primary channel; this polling timer is just a
-    // safety net in case a push is missed (e.g. brief reconnect).
     _pollTimer = Timer.periodic(const Duration(seconds: 8), (_) => _load());
   }
 
@@ -61,9 +61,7 @@ class _RideTrackingScreenState extends State<RideTrackingScreen> {
     try {
       final res = await ApiClient.request('/rides/${widget.rideId}');
       if (mounted) setState(() => _ride = res['ride'] as Map<String, dynamic>?);
-    } catch (_) {
-      // Ignore transient errors on the background poll.
-    }
+    } catch (_) {}
   }
 
   Future<void> _setStatus(String status) async {
@@ -75,7 +73,9 @@ class _RideTrackingScreenState extends State<RideTrackingScreen> {
       await ApiClient.request('/rides/${widget.rideId}/status', method: 'PATCH', body: {'status': status});
       await _load();
     } catch (e) {
-      setState(() => _error = e.toString());
+      if (mounted) {
+        setState(() => _error = e.toString());
+      }
     } finally {
       if (mounted) setState(() => _busy = false);
     }
@@ -97,7 +97,9 @@ class _RideTrackingScreenState extends State<RideTrackingScreen> {
       await Stripe.instance.presentPaymentSheet();
       await _load();
     } catch (e) {
-      setState(() => _error = 'Payment not completed: $e');
+      if (mounted) {
+        setState(() => _error = 'Payment not completed: $e');
+      }
     } finally {
       if (mounted) setState(() => _busy = false);
     }
@@ -109,7 +111,9 @@ class _RideTrackingScreenState extends State<RideTrackingScreen> {
       await ApiClient.request('/rides/${widget.rideId}/cash-collected', method: 'POST');
       await _load();
     } catch (e) {
-      setState(() => _error = e.toString());
+      if (mounted) {
+        setState(() => _error = e.toString());
+      }
     } finally {
       if (mounted) setState(() => _busy = false);
     }
@@ -119,34 +123,99 @@ class _RideTrackingScreenState extends State<RideTrackingScreen> {
   Widget build(BuildContext context) {
     final ride = _ride;
     return Scaffold(
-      appBar: AppBar(title: const Text('Ride')),
+      appBar: AppBar(
+        title: Text(widget.asDriver ? 'Navigation & Trip' : 'Live Ride Tracking'),
+      ),
       body: ride == null
-          ? const Center(child: CircularProgressIndicator())
-          : Column(
+          ? const Center(
+              child: CircularProgressIndicator(
+                valueColor: AlwaysStoppedAnimation<Color>(AppColors.primary),
+              ),
+            )
+          : Stack(
               children: [
-                Expanded(child: _buildMap(ride)),
-                Padding(
-                  padding: const EdgeInsets.all(16),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      Text(
-                        'Status: ${(ride['status'] as String).replaceAll('_', ' ')}',
-                        style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        'Fare: ${ride['currency']} ${ride['fareFinal'] ?? ride['fareEstimate']} · '
-                        '${ride['paymentMode']} (${ride['paymentStatus']})',
-                      ),
-                      const SizedBox(height: 12),
-                      if (_error != null)
-                        Padding(
-                          padding: const EdgeInsets.only(bottom: 8),
-                          child: Text(_error!, style: const TextStyle(color: Colors.red)),
+                _buildMap(ride),
+
+                // Bottom Panel Sheet
+                Positioned(
+                  bottom: 0,
+                  left: 0,
+                  right: 0,
+                  child: Container(
+                    padding: const EdgeInsets.all(24),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withOpacity(0.18),
+                          blurRadius: 24,
+                          offset: const Offset(0, -6),
                         ),
-                      ..._buildActions(ride),
-                    ],
+                      ],
+                    ),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        // Status & Fare Header Row
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            _StatusBadge(status: ride['status'] as String),
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                              decoration: BoxDecoration(
+                                color: AppColors.primary.withOpacity(0.08),
+                                borderRadius: BorderRadius.circular(14),
+                              ),
+                              child: Text(
+                                '${ride['currency'] ?? 'LKR'} ${ride['fareFinal'] ?? ride['fareEstimate'] ?? '0'}',
+                                style: const TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 16,
+                                  color: AppColors.primary,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+
+                        const SizedBox(height: 14),
+
+                        // Payment Details
+                        Row(
+                          children: [
+                            Icon(
+                              ride['paymentMode'] == 'card' ? Icons.credit_card_rounded : Icons.payments_rounded,
+                              size: 18,
+                              color: AppColors.textSecondary,
+                            ),
+                            const SizedBox(width: 8),
+                            Text(
+                              'Payment: ${(ride['paymentMode'] as String).toUpperCase()} • Status: ${ride['paymentStatus']}',
+                              style: const TextStyle(
+                                fontSize: 13,
+                                color: AppColors.textSecondary,
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                          ],
+                        ),
+
+                        const SizedBox(height: 16),
+
+                        // Error Banner
+                        if (_error != null)
+                          CustomErrorBanner(
+                            message: _error!,
+                            onDismiss: () => setState(() => _error = null),
+                          ),
+
+                        // Action Buttons
+                        ..._buildActions(ride),
+                      ],
+                    ),
                   ),
                 ),
               ],
@@ -168,23 +237,72 @@ class _RideTrackingScreenState extends State<RideTrackingScreen> {
         .toList();
 
     return FlutterMap(
-      options: MapOptions(initialCenter: pickup, initialZoom: 13),
+      options: MapOptions(
+        initialCenter: pickup,
+        initialZoom: 13,
+      ),
       children: [
         TileLayer(
           urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
           userAgentPackageName: 'com.ceylonway.taxi',
         ),
         if (routePoints.isNotEmpty)
-          PolylineLayer(polylines: [Polyline(points: routePoints, strokeWidth: 4, color: Colors.teal)]),
+          PolylineLayer(
+            polylines: [
+              Polyline(
+                points: routePoints,
+                strokeWidth: 4.5,
+                color: AppColors.primary,
+              ),
+            ],
+          ),
         MarkerLayer(markers: [
-          Marker(point: pickup, width: 36, height: 36, child: const Icon(Icons.trip_origin, color: Colors.teal)),
-          Marker(point: destination, width: 36, height: 36, child: const Icon(Icons.location_on, color: Colors.red)),
+          Marker(
+            point: pickup,
+            width: 40,
+            height: 40,
+            child: Container(
+              padding: const EdgeInsets.all(6),
+              decoration: const BoxDecoration(
+                color: AppColors.accent,
+                shape: BoxShape.circle,
+              ),
+              child: const Icon(Icons.trip_origin_rounded, color: Colors.white, size: 22),
+            ),
+          ),
+          Marker(
+            point: destination,
+            width: 40,
+            height: 40,
+            child: Container(
+              padding: const EdgeInsets.all(6),
+              decoration: const BoxDecoration(
+                color: AppColors.errorText,
+                shape: BoxShape.circle,
+              ),
+              child: const Icon(Icons.location_on_rounded, color: Colors.white, size: 22),
+            ),
+          ),
           if (_driverPosition != null)
             Marker(
               point: _driverPosition!,
-              width: 40,
-              height: 40,
-              child: const Icon(Icons.local_taxi, color: Colors.orange, size: 32),
+              width: 44,
+              height: 44,
+              child: Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: AppColors.primary,
+                  shape: BoxShape.circle,
+                  boxShadow: [
+                    BoxShadow(
+                      color: AppColors.primary.withOpacity(0.4),
+                      blurRadius: 10,
+                      spreadRadius: 2,
+                    ),
+                  ],
+                ),
+                child: const Icon(Icons.local_taxi_rounded, color: Colors.white, size: 24),
+              ),
             ),
         ]),
       ],
@@ -197,45 +315,142 @@ class _RideTrackingScreenState extends State<RideTrackingScreen> {
     if (widget.asDriver) {
       final actions = <Widget>[];
       if (status == 'accepted') {
-        actions.add(FilledButton(
+        actions.add(FilledButton.icon(
+          icon: const Icon(Icons.navigation_rounded),
           onPressed: _busy ? null : () => _setStatus('arriving'),
-          child: const Text('Mark: arriving at pickup'),
+          label: const Text('Arriving at Pickup Location'),
         ));
       } else if (status == 'arriving') {
-        actions.add(FilledButton(
+        actions.add(FilledButton.icon(
+          icon: const Icon(Icons.play_arrow_rounded),
           onPressed: _busy ? null : () => _setStatus('in_progress'),
-          child: const Text('Start trip'),
+          label: const Text('Start Trip'),
         ));
       } else if (status == 'in_progress') {
-        actions.add(FilledButton(
+        actions.add(FilledButton.icon(
+          icon: const Icon(Icons.check_circle_rounded),
           onPressed: _busy ? null : () => _setStatus('completed'),
-          child: const Text('Complete trip'),
+          label: const Text('Complete Trip'),
         ));
       } else if (status == 'completed' && ride['paymentMode'] == 'cash' && ride['paymentStatus'] != 'paid') {
-        actions.add(FilledButton(onPressed: _busy ? null : _cashCollected, child: const Text('Confirm cash collected')));
+        actions.add(FilledButton.icon(
+          icon: const Icon(Icons.payments_rounded),
+          onPressed: _busy ? null : _cashCollected,
+          label: const Text('Confirm Cash Payment Received'),
+        ));
       }
       return actions;
     }
 
     final actions = <Widget>[];
     if (status == 'searching') {
-      actions.add(const Padding(
-        padding: EdgeInsets.symmetric(vertical: 8),
-        child: Center(child: Text('Looking for a nearby driver…')),
+      actions.add(Container(
+        padding: const EdgeInsets.all(12),
+        margin: const EdgeInsets.only(bottom: 12),
+        decoration: BoxDecoration(
+          color: AppColors.primary.withOpacity(0.08),
+          borderRadius: BorderRadius.circular(14),
+        ),
+        child: const Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            SizedBox(
+              width: 16,
+              height: 16,
+              child: CircularProgressIndicator(strokeWidth: 2, valueColor: AlwaysStoppedAnimation<Color>(AppColors.primary)),
+            ),
+            SizedBox(width: 12),
+            Text('Finding a nearby driver…', style: TextStyle(fontWeight: FontWeight.w600, color: AppColors.primary)),
+          ],
+        ),
       ));
     }
     if (status == 'no_drivers_available') {
-      actions.add(const Padding(
-        padding: EdgeInsets.symmetric(vertical: 8),
-        child: Center(child: Text('No drivers were available nearby. Try again shortly.')),
+      actions.add(Container(
+        padding: const EdgeInsets.all(12),
+        margin: const EdgeInsets.only(bottom: 12),
+        decoration: BoxDecoration(
+          color: AppColors.warningBg,
+          borderRadius: BorderRadius.circular(14),
+        ),
+        child: const Text('No drivers were available nearby. Please try again shortly.', textAlign: TextAlign.center, style: TextStyle(color: AppColors.warningText)),
       ));
     }
     if (['searching', 'accepted'].contains(status)) {
-      actions.add(OutlinedButton(onPressed: _busy ? null : () => _setStatus('cancelled'), child: const Text('Cancel ride')));
+      actions.add(OutlinedButton.icon(
+        icon: const Icon(Icons.cancel_outlined),
+        onPressed: _busy ? null : () => _setStatus('cancelled'),
+        label: const Text('Cancel Ride'),
+        style: OutlinedButton.styleFrom(
+          foregroundColor: AppColors.errorText,
+          side: const BorderSide(color: AppColors.errorBorder),
+        ),
+      ));
     }
     if (ride['paymentMode'] == 'card' && ride['paymentStatus'] == 'pending' && status != 'cancelled') {
-      actions.add(FilledButton(onPressed: _busy ? null : _payByCard, child: const Text('Authorize card payment')));
+      actions.add(Padding(
+        padding: const EdgeInsets.only(top: 8),
+        child: FilledButton.icon(
+          icon: const Icon(Icons.credit_card_rounded),
+          onPressed: _busy ? null : _payByCard,
+          label: const Text('Pay with Stripe Card'),
+        ),
+      ));
     }
     return actions;
+  }
+}
+
+class _StatusBadge extends StatelessWidget {
+  final String status;
+
+  const _StatusBadge({required this.status});
+
+  @override
+  Widget build(BuildContext context) {
+    Color bg = const Color(0xFFE2E8F0);
+    Color text = AppColors.textPrimary;
+    String label = status.replaceAll('_', ' ').toUpperCase();
+
+    switch (status) {
+      case 'searching':
+        bg = const Color(0xFFE0F2FE);
+        text = const Color(0xFF0284C7);
+        break;
+      case 'accepted':
+      case 'arriving':
+        bg = const Color(0xFFFEF3C7);
+        text = const Color(0xFFD97706);
+        break;
+      case 'in_progress':
+        bg = const Color(0xFFCCFBF1);
+        text = const Color(0xFF0D9488);
+        break;
+      case 'completed':
+        bg = AppColors.successBg;
+        text = AppColors.successText;
+        break;
+      case 'cancelled':
+        bg = AppColors.errorBg;
+        text = AppColors.errorText;
+        break;
+    }
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+      decoration: BoxDecoration(
+        color: bg,
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Text(
+        label,
+        style: TextStyle(
+          color: text,
+          fontWeight: FontWeight.bold,
+          fontSize: 12,
+          letterSpacing: 0.5,
+        ),
+      ),
+    );
   }
 }

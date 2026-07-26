@@ -60,17 +60,15 @@ router.post("/plan-trip", requireAuth, requireRole("tourist"), async (req, res) 
 
   let items;
   const llmText = await callLocalLlm(
-    `A tourist wants a ${days}-day trip ` +
-      `(budget level: ${budgetLevel}, interests: ${interests.join(", ") || "general sightseeing"}` +
-      (city ? `, based near ${city}` : "") +
-      `). From this list of available listings, propose a day-by-day plan. ` +
-      `Listings (id | title | category | tags): ` +
-      candidates.map((c) => `${c._id} | ${c.title} | ${c.category} | ${(c.tags || []).join(",")}`).join("; ") +
-      `\n\nRespond ONLY with JSON, no other text: an array of {"day": number, "title": string, "listingId": string, "notes": string}.`,
+    `Plan a ${days}-day Sri Lanka trip. Budget: ${budgetLevel}. Interests: ${interests.join(", ") || "general"}.${city ? ` Base: ${city}.` : ""} ` +
+    `Listings (id|title|category): ` +
+    candidates.slice(0, 8).map((c) => `${c._id}|${c.title}|${c.category}`).join("; ") +
+    `\nJSON only: [{"day":1,"title":"...","listingId":"...","notes":"brief"}]`,
     {
-      systemPrompt:
-        "You are a Sri Lanka trip planning assistant. You only ever respond with valid JSON, never prose.",
-      maxTokens: 900,
+      systemPrompt: "Reply only with a valid JSON array. No prose.",
+      maxTokens: 400,
+      temperature: 0.4,
+      timeoutMs: 45_000,
     }
   );
 
@@ -146,10 +144,10 @@ router.post("/chat", requireAuth, async (req, res) => {
   if (!message) return res.status(400).json({ error: "message is required" });
 
   const llmText = await callLocalLlm(message, {
-    systemPrompt:
-      `You are a friendly, safety-conscious Sri Lanka tourism assistant. ` +
-      `Reply in language code "${language}". Keep answers concise and practical.`,
-    maxTokens: 500,
+    systemPrompt: `You are a Sri Lanka tourism assistant. Language: "${language}". Answer in 1-3 short sentences only.`,
+    maxTokens: 80,
+    temperature: 0.7,
+    timeoutMs: 40_000,
   });
 
   res.json({

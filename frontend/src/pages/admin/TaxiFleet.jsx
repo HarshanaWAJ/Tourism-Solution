@@ -5,7 +5,7 @@ import "leaflet/dist/leaflet.css";
 import { api } from "../../api/client.js";
 import { getSocket } from "../../api/socket.js";
 
-const TABS = ["Live map", "Drivers", "Verification", "Rides"];
+const TABS = ["Live map", "Drivers", "Verification", "Rides", "Fare Config"];
 
 // Avoid bundler asset-path issues with Leaflet's default marker images by
 // pointing at the same version's files on a CDN instead.
@@ -43,6 +43,7 @@ export default function TaxiFleet() {
       {tab === "Drivers" && <DriverList />}
       {tab === "Verification" && <DriverVerification />}
       {tab === "Rides" && <RidesMonitor />}
+      {tab === "Fare Config" && <FareConfigPanel />}
     </div>
   );
 }
@@ -272,6 +273,337 @@ function RidesMonitor() {
             </span>
           </div>
         ))}
+      </div>
+    </div>
+  );
+}
+// ---------------------------------------------------------------------------
+// Fare Configuration Panel
+// ---------------------------------------------------------------------------
+
+const VEHICLE_META = {
+  tuk_tuk: { label: "Tuk-Tuk 🛺", color: "amber" },
+  car:     { label: "Car 🚗",     color: "teal"  },
+  van:     { label: "Van 🚐",     color: "violet"},
+  bike:    { label: "Bike 🏍️",    color: "rose"  },
+};
+
+function FareConfigPanel() {
+  const [configs, setConfigs] = useState(null);
+  const [selected, setSelected] = useState("tuk_tuk");
+  const [form, setForm] = useState({});
+  const [saving, setSaving] = useState(false);
+  const [msg, setMsg] = useState(null); // { type: 'success'|'error', text }
+  // Live fare preview state
+  const [previewKm, setPreviewKm] = useState(5);
+  const [previewWaitMin, setPreviewWaitMin] = useState(0);
+
+  async function load() {
+    const res = await api.adminGetFareConfig();
+    setConfigs(res.configs);
+    const initial = res.configs.find((c) => c.vehicleType === selected) || res.configs[0];
+    setForm(toForm(initial));
+  }
+
+  function toForm(cfg) {
+    return {
+      firstKmPrice:       String(cfg.firstKmPrice ?? ""),
+      perKmPrice:         String(cfg.perKmPrice ?? ""),
+      waitingChargePerMin: String(cfg.waitingChargePerMin ?? ""),
+      minimumFare:        String(cfg.minimumFare ?? "0"),
+      currency:           cfg.currency || "USD",
+    };
+  }
+
+  useEffect(() => { load(); }, []);
+
+  useEffect(() => {
+    if (!configs) return;
+    const cfg = configs.find((c) => c.vehicleType === selected);
+    if (cfg) setForm(toForm(cfg));
+  }, [selected]);
+
+  function field(key, value) {
+    setForm((f) => ({ ...f, [key]: value }));
+    setMsg(null);
+  }
+
+  // Live fare preview calculation
+  function previewFare() {
+    const firstKm = parseFloat(form.firstKmPrice) || 0;
+    const perKm   = parseFloat(form.perKmPrice)   || 0;
+    const waiting = parseFloat(form.waitingChargePerMin) || 0;
+    const minFare = parseFloat(form.minimumFare)  || 0;
+    const km = Math.max(0, previewKm);
+    const first   = firstKm;
+    const addl    = Math.max(0, km - 1) * perKm;
+    const wait    = previewWaitMin * waiting;
+    const total   = Math.max(minFare, first + addl + wait);
+    return { first: first.toFixed(2), addl: addl.toFixed(2), wait: wait.toFixed(2), total: total.toFixed(2) };
+  }
+
+  async function save(e) {
+    e.preventDefault();
+    setSaving(true);
+    setMsg(null);
+    try {
+      await api.adminSaveFareConfig(selected, {
+        firstKmPrice:        parseFloat(form.firstKmPrice),
+        perKmPrice:          parseFloat(form.perKmPrice),
+        waitingChargePerMin: parseFloat(form.waitingChargePerMin),
+        minimumFare:         parseFloat(form.minimumFare || 0),
+        currency:            form.currency,
+      });
+      await load();
+      setMsg({ type: "success", text: `${VEHICLE_META[selected]?.label} fare config saved successfully.` });
+    } catch (err) {
+      setMsg({ type: "error", text: err.message });
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  function reset() {
+    const cfg = configs?.find((c) => c.vehicleType === selected);
+    if (cfg) setForm(toForm(cfg));
+    setMsg(null);
+  }
+
+  if (!configs) return <p className="text-teal-950/50">Loading fare configuration…</p>;
+
+  const preview = previewFare();
+
+  return (
+    <div className="space-y-6">
+      {/* Page header */}
+      <div>
+        <h2 className="text-lg font-semibold text-teal-950">Fare Pricing Configuration</h2>
+        <p className="text-sm text-teal-950/55 mt-1">
+          Set the base first-kilometre charge, per-kilometre rate, and waiting charge for each vehicle type.
+          Changes take effect immediately for all new ride estimates and final fare calculations.
+        </p>
+      </div>
+
+      {/* Vehicle tabs */}
+      <div className="flex gap-2 flex-wrap">
+        {Object.entries(VEHICLE_META).map(([type, meta]) => (
+          <button
+            key={type}
+            onClick={() => setSelected(type)}
+            className={`px-4 py-2 rounded-xl text-sm font-medium border transition ${
+              selected === type
+                ? "bg-teal-900 text-white border-teal-900"
+                : "bg-white text-teal-900 border-teal-900/20 hover:bg-teal-50"
+            }`}
+          >
+            {meta.label}
+          </button>
+        ))}
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
+        {/* ---- Form ---- */}
+        <form onSubmit={save} className="lg:col-span-3 bg-white border border-teal-900/10 rounded-2xl p-6 space-y-5">
+          <h3 className="font-semibold text-teal-950">{VEHICLE_META[selected]?.label} — Pricing Rules</h3>
+
+          {/* Pricing model explanation */}
+          <div className="bg-teal-50 rounded-xl p-4 text-sm text-teal-900 space-y-1">
+            <p className="font-medium">Fare Calculation Model</p>
+            <p className="text-teal-950/70">
+              <span className="font-mono bg-white px-1.5 py-0.5 rounded text-xs">
+                fare = firstKmPrice + max(0, km−1) × perKmPrice + waitMinutes × waitingCharge
+              </span>
+            </p>
+            <p className="text-teal-950/60 text-xs">Result is clamped to the minimum fare floor if set.</p>
+          </div>
+
+          {/* Currency */}
+          <div>
+            <label className="block text-xs font-semibold text-teal-950/60 uppercase tracking-wide mb-1">Currency</label>
+            <select
+              value={form.currency}
+              onChange={(e) => field("currency", e.target.value)}
+              className="w-full border border-teal-900/15 rounded-xl px-3 py-2.5 text-sm"
+            >
+              <option value="USD">USD — US Dollar</option>
+              <option value="LKR">LKR — Sri Lanka Rupee</option>
+              <option value="EUR">EUR — Euro</option>
+            </select>
+          </div>
+
+          {/* First KM Price */}
+          <div>
+            <label className="block text-xs font-semibold text-teal-950/60 uppercase tracking-wide mb-1">
+              First Kilometre Flat Price
+            </label>
+            <div className="relative">
+              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-teal-950/40 text-sm font-medium">{form.currency}</span>
+              <input
+                type="number" min="0" step="0.01" required
+                value={form.firstKmPrice}
+                onChange={(e) => field("firstKmPrice", e.target.value)}
+                className="w-full border border-teal-900/15 rounded-xl pl-12 pr-4 py-2.5 text-sm"
+                placeholder="e.g. 1.50"
+              />
+            </div>
+            <p className="text-xs text-teal-950/45 mt-1">Covers the first 1 km. No additional per-km charge for this distance.</p>
+          </div>
+
+          {/* Per KM Price */}
+          <div>
+            <label className="block text-xs font-semibold text-teal-950/60 uppercase tracking-wide mb-1">
+              Per Kilometre Price <span className="text-teal-950/40 normal-case font-normal">(after first km)</span>
+            </label>
+            <div className="relative">
+              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-teal-950/40 text-sm font-medium">{form.currency}</span>
+              <input
+                type="number" min="0" step="0.01" required
+                value={form.perKmPrice}
+                onChange={(e) => field("perKmPrice", e.target.value)}
+                className="w-full border border-teal-900/15 rounded-xl pl-12 pr-4 py-2.5 text-sm"
+                placeholder="e.g. 0.55"
+              />
+            </div>
+            <p className="text-xs text-teal-950/45 mt-1">Applied to every kilometre beyond the first.</p>
+          </div>
+
+          {/* Waiting Charge */}
+          <div>
+            <label className="block text-xs font-semibold text-teal-950/60 uppercase tracking-wide mb-1">
+              Waiting Charge <span className="text-teal-950/40 normal-case font-normal">(per minute)</span>
+            </label>
+            <div className="relative">
+              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-teal-950/40 text-sm font-medium">{form.currency}</span>
+              <input
+                type="number" min="0" step="0.001" required
+                value={form.waitingChargePerMin}
+                onChange={(e) => field("waitingChargePerMin", e.target.value)}
+                className="w-full border border-teal-900/15 rounded-xl pl-12 pr-4 py-2.5 text-sm"
+                placeholder="e.g. 0.07"
+              />
+            </div>
+            <p className="text-xs text-teal-950/45 mt-1">Charged per minute while the driver waits at pickup or during traffic stops.</p>
+          </div>
+
+          {/* Minimum Fare */}
+          <div>
+            <label className="block text-xs font-semibold text-teal-950/60 uppercase tracking-wide mb-1">
+              Minimum Fare Floor
+            </label>
+            <div className="relative">
+              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-teal-950/40 text-sm font-medium">{form.currency}</span>
+              <input
+                type="number" min="0" step="0.01"
+                value={form.minimumFare}
+                onChange={(e) => field("minimumFare", e.target.value)}
+                className="w-full border border-teal-900/15 rounded-xl pl-12 pr-4 py-2.5 text-sm"
+                placeholder="e.g. 1.00"
+              />
+            </div>
+            <p className="text-xs text-teal-950/45 mt-1">The calculated fare will never go below this value. Set 0 to disable.</p>
+          </div>
+
+          {/* Feedback message */}
+          {msg && (
+            <div className={`text-sm rounded-xl px-4 py-3 ${
+              msg.type === "success" ? "bg-teal-50 text-teal-800" : "bg-red-50 text-red-700"
+            }`}>
+              {msg.text}
+            </div>
+          )}
+
+          {/* Actions */}
+          <div className="flex gap-3 pt-2">
+            <button
+              type="submit"
+              disabled={saving}
+              className="flex-1 bg-teal-900 text-white rounded-xl py-2.5 text-sm font-semibold hover:bg-teal-800 transition disabled:opacity-50"
+            >
+              {saving ? "Saving…" : "Save Configuration"}
+            </button>
+            <button
+              type="button"
+              onClick={reset}
+              className="px-5 border border-teal-900/20 rounded-xl text-sm text-teal-900 hover:bg-teal-50 transition"
+            >
+              Reset
+            </button>
+          </div>
+        </form>
+
+        {/* ---- Live Preview ---- */}
+        <div className="lg:col-span-2 space-y-4">
+          <div className="bg-white border border-teal-900/10 rounded-2xl p-6">
+            <h3 className="font-semibold text-teal-950 mb-4">Live Fare Preview</h3>
+            <div className="space-y-4">
+              <div>
+                <label className="block text-xs font-semibold text-teal-950/60 uppercase tracking-wide mb-1">Trip Distance (km)</label>
+                <input
+                  type="range" min="0.5" max="50" step="0.5"
+                  value={previewKm}
+                  onChange={(e) => setPreviewKm(Number(e.target.value))}
+                  className="w-full accent-teal-700"
+                />
+                <p className="text-sm text-teal-950 font-medium mt-1">{previewKm} km</p>
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-teal-950/60 uppercase tracking-wide mb-1">Waiting Time (minutes)</label>
+                <input
+                  type="range" min="0" max="60" step="1"
+                  value={previewWaitMin}
+                  onChange={(e) => setPreviewWaitMin(Number(e.target.value))}
+                  className="w-full accent-teal-700"
+                />
+                <p className="text-sm text-teal-950 font-medium mt-1">{previewWaitMin} min</p>
+              </div>
+            </div>
+
+            {/* Breakdown */}
+            <div className="mt-5 rounded-xl bg-teal-50 p-4 space-y-2 text-sm">
+              <div className="flex justify-between text-teal-950/70">
+                <span>First km flat charge</span>
+                <span className="font-medium">{form.currency} {preview.first}</span>
+              </div>
+              <div className="flex justify-between text-teal-950/70">
+                <span>Additional {Math.max(0, previewKm - 1).toFixed(1)} km</span>
+                <span className="font-medium">{form.currency} {preview.addl}</span>
+              </div>
+              <div className="flex justify-between text-teal-950/70">
+                <span>Waiting ({previewWaitMin} min)</span>
+                <span className="font-medium">{form.currency} {preview.wait}</span>
+              </div>
+              <div className="border-t border-teal-900/10 pt-2 flex justify-between font-bold text-teal-950 text-base">
+                <span>Total Fare</span>
+                <span className="text-teal-700">{form.currency} {preview.total}</span>
+              </div>
+            </div>
+          </div>
+
+          {/* Summary table of all vehicles */}
+          <div className="bg-white border border-teal-900/10 rounded-2xl p-5">
+            <h4 className="text-sm font-semibold text-teal-950 mb-3">All Vehicle Rates</h4>
+            <table className="w-full text-xs text-teal-950/70">
+              <thead>
+                <tr className="text-teal-950/45 uppercase tracking-wide">
+                  <th className="text-left pb-2">Type</th>
+                  <th className="text-right pb-2">1st km</th>
+                  <th className="text-right pb-2">/km</th>
+                  <th className="text-right pb-2">/min wait</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-teal-900/5">
+                {configs.map((c) => (
+                  <tr key={c.vehicleType} className={`py-1.5 ${c.vehicleType === selected ? "font-semibold text-teal-900" : ""}`}>
+                    <td className="py-1.5">{VEHICLE_META[c.vehicleType]?.label || c.vehicleType}</td>
+                    <td className="text-right py-1.5">{c.currency} {Number(c.firstKmPrice).toFixed(2)}</td>
+                    <td className="text-right py-1.5">{c.currency} {Number(c.perKmPrice).toFixed(2)}</td>
+                    <td className="text-right py-1.5">{c.currency} {Number(c.waitingChargePerMin).toFixed(3)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
       </div>
     </div>
   );

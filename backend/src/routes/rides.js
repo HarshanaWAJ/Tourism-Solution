@@ -4,7 +4,7 @@ import Ride from "../models/Ride.js";
 import { requireAuth, requireRole } from "../middleware/auth.js";
 import { getIO } from "../realtime/socket.js";
 import { getRoute } from "../utils/routing.js";
-import { estimateFare } from "../utils/fare.js";
+import { estimateFare, getFareConfig, calculateFare } from "../utils/fare.js";
 import { getStripe } from "../config/stripe.js";
 
 const router = Router();
@@ -33,7 +33,7 @@ router.post("/", requireAuth, requireRole("tourist"), async (req, res) => {
   }
 
   const route = await getRoute(pickup, destination);
-  const { amount: fareEstimate, currency } = estimateFare(vehicleType, route.distanceMeters, route.durationSeconds);
+  const { amount: fareEstimate, currency } = await estimateFare(vehicleType, route.distanceMeters, 0);
 
   const ride = await Ride.create({
     tourist: req.user.id,
@@ -109,10 +109,31 @@ router.patch("/:id/status", requireAuth, async (req, res) => {
   }
 
   ride.status = status;
-  if (status === "in_progress") ride.startedAt = new Date();
+  if (status === "arriving") ride.arrivedAt = new Date();
+  if (status === "in_progress") {
+    ride.startedAt = new Date();
+    // Auto-compute waiting seconds from arrivedAt → startedAt
+    if (ride.arrivedAt) {
+      const autoWaiting = Math.round((ride.startedAt - ride.arrivedAt) / 1000);
+      // Allow override via body.waitingSeconds (e.g. manual stop timer)
+      ride.waitingSeconds = req.body.waitingSeconds != null
+        ? Math.max(0, Number(req.body.waitingSeconds))
+        : Math.max(0, autoWaiting);
+    }
+  }
   if (status === "completed") {
     ride.completedAt = new Date();
-    ride.fareFinal = ride.fareFinal ?? ride.fareEstimate;
+    // Recalculate final fare from actual distance + waiting time
+    const config = await getFareConfig(ride.vehicleType);
+    const totalWaitingSec = ride.waitingSeconds || 0;
+    const { amount, currency, breakdown } = calculateFare(
+      config,
+      ride.distanceMeters || 0,
+      totalWaitingSec
+    );
+    ride.fareFinal = amount;
+    ride.currency = currency;
+    ride.fareBreakdown = breakdown;
   }
   if (status === "cancelled") {
     ride.cancelledBy = isTourist ? "tourist" : isDriver ? "driver" : "admin";

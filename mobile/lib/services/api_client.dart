@@ -43,18 +43,25 @@ class ApiClient {
     final encodedBody = body != null ? jsonEncode(body) : null;
 
     http.Response res;
-    switch (method) {
-      case 'POST':
-        res = await http.post(uri, headers: headers, body: encodedBody);
-        break;
-      case 'PATCH':
-        res = await http.patch(uri, headers: headers, body: encodedBody);
-        break;
-      case 'DELETE':
-        res = await http.delete(uri, headers: headers, body: encodedBody);
-        break;
-      default:
-        res = await http.get(uri, headers: headers);
+    try {
+      switch (method) {
+        case 'POST':
+          res = await http.post(uri, headers: headers, body: encodedBody);
+          break;
+        case 'PATCH':
+          res = await http.patch(uri, headers: headers, body: encodedBody);
+          break;
+        case 'DELETE':
+          res = await http.delete(uri, headers: headers, body: encodedBody);
+          break;
+        default:
+          res = await http.get(uri, headers: headers);
+      }
+    } catch (e) {
+      if (e is ApiException) rethrow;
+      throw ApiException(
+        'Unable to connect to server. Please check your internet connection or ensure the backend server is running.',
+      );
     }
 
     Map<String, dynamic> data = {};

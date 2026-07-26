@@ -107,6 +107,11 @@ export const api = {
   adminSuspendDriver: (id, isSuspended) =>
     apiFetch(`/admin/taxi/drivers/${id}/suspend`, { method: "PATCH", body: { isSuspended } }),
   adminTaxiRides: (params = {}) => apiFetch(`/admin/taxi/rides?${new URLSearchParams(params).toString()}`),
+
+  // Fare pricing configuration
+  adminGetFareConfig: () => apiFetch("/admin/fare-config"),
+  adminSaveFareConfig: (vehicleType, payload) =>
+    apiFetch(`/admin/fare-config/${vehicleType}`, { method: "PUT", body: payload }),
 };
 
 export { getToken };

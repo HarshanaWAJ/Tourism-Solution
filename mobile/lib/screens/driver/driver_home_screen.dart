@@ -7,6 +7,8 @@ import 'package:provider/provider.dart';
 import '../../services/api_client.dart';
 import '../../services/socket_service.dart';
 import '../../state/auth_provider.dart';
+import '../../theme/app_theme.dart';
+import '../../widgets/custom_banner.dart';
 import '../ride_tracking_screen.dart';
 import 'driver_verification_screen.dart';
 
@@ -54,14 +56,18 @@ class _DriverHomeScreenState extends State<DriverHomeScreen> {
         _verificationStatus = driver['verificationStatus'] as String? ?? 'unverified';
       });
     } catch (e) {
-      setState(() => _error = e.toString());
+      if (mounted) {
+        setState(() => _error = e.toString());
+      }
     }
   }
 
   Future<void> _listenForRequests() async {
     final socket = await SocketService.connect();
     socket.on('ride:request', (data) {
-      if (mounted && data != null) setState(() => _incomingRequest = Map<String, dynamic>.from(data as Map));
+      if (mounted && data != null) {
+        setState(() => _incomingRequest = Map<String, dynamic>.from(data as Map));
+      }
     });
   }
 
@@ -79,7 +85,9 @@ class _DriverHomeScreenState extends State<DriverHomeScreen> {
         _positionStream?.cancel();
       }
     } catch (e) {
-      setState(() => _error = e.toString());
+      if (mounted) {
+        setState(() => _error = e.toString());
+      }
     } finally {
       if (mounted) setState(() => _busy = false);
     }
@@ -95,22 +103,23 @@ class _DriverHomeScreenState extends State<DriverHomeScreen> {
           'lat': pos.latitude,
           'lng': pos.longitude,
         });
-      } catch (_) {
-        // A dropped ping isn't fatal — the next one will land.
-      }
+      } catch (_) {}
     });
   }
 
   Future<void> _acceptRequest() async {
+    final nav = Navigator.of(context);
     final rideId = _incomingRequest?['rideId'] as String?;
     if (rideId == null) return;
     try {
       await ApiClient.request('/rides/$rideId/accept', method: 'POST');
       setState(() => _incomingRequest = null);
       if (!mounted) return;
-      Navigator.push(context, MaterialPageRoute(builder: (_) => RideTrackingScreen(rideId: rideId, asDriver: true)));
+      nav.push(MaterialPageRoute(builder: (_) => RideTrackingScreen(rideId: rideId, asDriver: true)));
     } catch (e) {
-      setState(() => _error = e.toString());
+      if (mounted) {
+        setState(() => _error = e.toString());
+      }
     }
   }
 
@@ -118,20 +127,30 @@ class _DriverHomeScreenState extends State<DriverHomeScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Driver'),
+        title: const Text('Driver Dashboard'),
         actions: [
           IconButton(
-            icon: const Icon(Icons.badge_outlined),
-            tooltip: 'Verification documents',
-            onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const DriverVerificationScreen())),
+            icon: const Icon(Icons.verified_user_outlined, color: AppColors.primary),
+            tooltip: 'Verification Documents',
+            onPressed: () => Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => const DriverVerificationScreen()),
+            ),
           ),
-          IconButton(icon: const Icon(Icons.logout), onPressed: () => context.read<AuthProvider>().logout()),
+          IconButton(
+            icon: const Icon(Icons.logout_rounded, color: AppColors.textSecondary),
+            tooltip: 'Log out',
+            onPressed: () => context.read<AuthProvider>().logout(),
+          ),
         ],
       ),
       body: Stack(
         children: [
           FlutterMap(
-            options: MapOptions(initialCenter: _position ?? _kandy, initialZoom: 13),
+            options: MapOptions(
+              initialCenter: _position ?? _kandy,
+              initialZoom: 13,
+            ),
             children: [
               TileLayer(
                 urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
@@ -139,76 +158,250 @@ class _DriverHomeScreenState extends State<DriverHomeScreen> {
               ),
               if (_position != null)
                 MarkerLayer(markers: [
-                  Marker(point: _position!, width: 40, height: 40, child: const Icon(Icons.local_taxi, color: Colors.teal, size: 32)),
+                  Marker(
+                    point: _position!,
+                    width: 44,
+                    height: 44,
+                    child: Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: AppColors.primary,
+                        shape: BoxShape.circle,
+                        boxShadow: [
+                          BoxShadow(
+                            color: AppColors.primary.withOpacity(0.4),
+                            blurRadius: 10,
+                            spreadRadius: 2,
+                          ),
+                        ],
+                      ),
+                      child: const Icon(Icons.local_taxi_rounded, color: Colors.white, size: 24),
+                    ),
+                  ),
                 ]),
             ],
           ),
+
+          // Top Status Header Panel
           Positioned(
             top: 12,
-            left: 12,
-            right: 12,
-            child: Card(
-              child: Padding(
-                padding: const EdgeInsets.all(12),
-                child: _verificationStatus != 'verified'
-                    ? Row(
-                        children: [
-                          const Expanded(
-                            child: Text('Your account isn\'t verified yet — submit your documents to go online.'),
-                          ),
-                          TextButton(
-                            onPressed: () => Navigator.push(
-                              context,
-                              MaterialPageRoute(builder: (_) => const DriverVerificationScreen()),
-                            ),
-                            child: const Text('Submit'),
-                          ),
-                        ],
-                      )
-                    : Row(
-                        children: [
-                          Expanded(child: Text(_online ? "You're online — waiting for ride requests" : "You're offline")),
-                          Switch(value: _online, onChanged: _busy ? null : _toggleOnline),
-                        ],
-                      ),
+            left: 16,
+            right: 16,
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(20),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.12),
+                    blurRadius: 16,
+                    offset: const Offset(0, 4),
+                  ),
+                ],
               ),
+              child: _verificationStatus != 'verified'
+                  ? Row(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.all(8),
+                          decoration: BoxDecoration(
+                            color: AppColors.warningBg,
+                            shape: BoxShape.circle,
+                          ),
+                          child: const Icon(Icons.warning_amber_rounded, color: AppColors.warningText, size: 22),
+                        ),
+                        const SizedBox(width: 12),
+                        const Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'Verification Pending',
+                                style: TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 14,
+                                  color: AppColors.textPrimary,
+                                ),
+                              ),
+                              Text(
+                                'Submit license docs to start accepting rides',
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  color: AppColors.textSecondary,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        TextButton(
+                          onPressed: () => Navigator.push(
+                            context,
+                            MaterialPageRoute(builder: (_) => const DriverVerificationScreen()),
+                          ),
+                          child: const Text('Submit'),
+                        ),
+                      ],
+                    )
+                  : Row(
+                      children: [
+                        Container(
+                          width: 12,
+                          height: 12,
+                          decoration: BoxDecoration(
+                            color: _online ? AppColors.successText : AppColors.textMuted,
+                            shape: BoxShape.circle,
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                _online ? "You're Online" : "You're Offline",
+                                style: TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 15,
+                                  color: _online ? AppColors.successText : AppColors.textPrimary,
+                                ),
+                              ),
+                              Text(
+                                _online ? "Listening for nearby ride requests..." : "Toggle switch to go online",
+                                style: const TextStyle(
+                                  fontSize: 12,
+                                  color: AppColors.textSecondary,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        Switch(
+                          value: _online,
+                          activeColor: AppColors.primary,
+                          onChanged: _busy ? null : _toggleOnline,
+                        ),
+                      ],
+                    ),
             ),
           ),
+
+          // Bottom Error Overlay
           if (_error != null)
             Positioned(
-              bottom: 12,
-              left: 12,
-              right: 12,
-              child: Card(
-                color: Colors.red.shade50,
-                child: Padding(padding: const EdgeInsets.all(12), child: Text(_error!)),
+              bottom: 20,
+              left: 16,
+              right: 16,
+              child: CustomErrorBanner(
+                message: _error!,
+                onDismiss: () => setState(() => _error = null),
               ),
             ),
         ],
       ),
+
+      // Ride Request Bottom Sheet
       bottomSheet: _incomingRequest == null
           ? null
           : Container(
-              color: Theme.of(context).scaffoldBackgroundColor,
-              padding: const EdgeInsets.all(16),
+              padding: const EdgeInsets.all(24),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.18),
+                    blurRadius: 24,
+                    offset: const Offset(0, -6),
+                  ),
+                ],
+              ),
               child: Column(
                 mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  const Text('New ride request!', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700)),
-                  const SizedBox(height: 8),
-                  Text('Pickup: ${_incomingRequest?['pickup']?['label'] ?? 'nearby'}'),
-                  Text('Fare estimate: ${_incomingRequest?['currency']} ${_incomingRequest?['fareEstimate']}'),
-                  const SizedBox(height: 12),
+                  Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(10),
+                        decoration: BoxDecoration(
+                          color: AppColors.accent.withOpacity(0.15),
+                          shape: BoxShape.circle,
+                        ),
+                        child: const Icon(Icons.notifications_active_rounded, color: AppColors.primary, size: 24),
+                      ),
+                      const SizedBox(width: 12),
+                      const Expanded(
+                        child: Text(
+                          'New Ride Request!',
+                          style: TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
+                            color: AppColors.textPrimary,
+                          ),
+                        ),
+                      ),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                        decoration: BoxDecoration(
+                          color: AppColors.successBg,
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: Text(
+                          'LKR ${_incomingRequest?['fareEstimate'] ?? '0'}',
+                          style: const TextStyle(
+                            fontWeight: FontWeight.bold,
+                            color: AppColors.successText,
+                            fontSize: 15,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 16),
+                  Container(
+                    padding: const EdgeInsets.all(14),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFF1F5F9),
+                      borderRadius: BorderRadius.circular(14),
+                    ),
+                    child: Row(
+                      children: [
+                        const Icon(Icons.location_on_rounded, color: AppColors.primary, size: 20),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: Text(
+                            'Pickup: ${_incomingRequest?['pickup']?['label'] ?? 'Nearby Tourist'}',
+                            style: const TextStyle(
+                              fontSize: 13.5,
+                              fontWeight: FontWeight.w600,
+                              color: AppColors.textPrimary,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 20),
                   Row(
                     children: [
                       Expanded(
                         child: OutlinedButton(
                           onPressed: () => setState(() => _incomingRequest = null),
-                          child: const Text('Ignore'),
+                          style: OutlinedButton.styleFrom(
+                            foregroundColor: AppColors.textSecondary,
+                            side: const BorderSide(color: Color(0xFFCBD5E1)),
+                          ),
+                          child: const Text('Decline'),
                         ),
                       ),
                       const SizedBox(width: 12),
-                      Expanded(child: FilledButton(onPressed: _acceptRequest, child: const Text('Accept'))),
+                      Expanded(
+                        child: FilledButton(
+                          onPressed: _acceptRequest,
+                          child: const Text('Accept Ride'),
+                        ),
+                      ),
                     ],
                   ),
                 ],
