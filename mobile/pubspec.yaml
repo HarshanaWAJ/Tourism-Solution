@@ -1,0 +1,38 @@
+name: ceylon_way_taxi
+description: >
+  Ceylon Way Taxi — a single Flutter app for both tourists (book rides) and
+  drivers (accept rides), Uber/PickMe-style, built on OpenStreetMap.
+publish_to: 'none'
+version: 1.0.0+1
+
+environment:
+  sdk: '>=3.3.0 <4.0.0'
+
+dependencies:
+  flutter:
+    sdk: flutter
+  cupertino_icons: ^1.0.8
+
+  # State management
+  provider: ^6.1.2
+
+  # Networking
+  http: ^1.2.2
+  socket_io_client: ^2.0.3+1
+  shared_preferences: ^2.3.2
+
+  # OpenStreetMap map + geolocation
+  flutter_map: ^7.0.2
+  latlong2: ^0.9.1
+  geolocator: ^13.0.1
+
+  # Stripe card payments
+  flutter_stripe: ^11.1.0
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^4.0.0
+
+flutter:
+  uses-material-design: true
