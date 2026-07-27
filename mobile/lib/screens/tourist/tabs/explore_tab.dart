@@ -438,12 +438,43 @@ class _ListingDetailModalState extends State<_ListingDetailModal> {
       setState(() => _modalError = 'No open availability slot available for booking.');
       return;
     }
+
+    final String? provider = await showDialog<String>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: const Text('Select Payment Option', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ListTile(
+              leading: const Icon(Icons.credit_card_rounded, color: AppColors.primary),
+              title: const Text('Credit Card (Stripe)', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+              subtitle: const Text('Instant card checkout via Stripe', style: TextStyle(fontSize: 11)),
+              onTap: () => Navigator.pop(ctx, 'stripe'),
+            ),
+            const Divider(),
+            ListTile(
+              leading: const Icon(Icons.payments_rounded, color: Color(0xFFD97706)),
+              title: const Text('Pay on Arrival / Cash', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+              subtitle: const Text('Guaranteed slot, pay directly at venue', style: TextStyle(fontSize: 11)),
+              onTap: () => Navigator.pop(ctx, 'cash_on_arrival'),
+            ),
+          ],
+        ),
+      ),
+    );
+
+    if (provider == null) return;
+
     setState(() {
       _bookingBusy = true;
       _modalError = null;
       _bookingSuccess = null;
     });
+
     try {
+      // Step 1: Create initial booking
       final res = await ApiClient.request(
         '/bookings',
         method: 'POST',
@@ -453,11 +484,38 @@ class _ListingDetailModalState extends State<_ListingDetailModal> {
           'partySize': _partySize,
         },
       );
-      if (mounted) {
-        final code = res['booking']?['confirmationCode'] as String? ?? '';
-        setState(() {
-          _bookingSuccess = 'Booking confirmed! Confirmation Code: $code';
-        });
+      final bookingId = res['booking']?['_id'] as String?;
+
+      if (bookingId != null) {
+        // Step 2: Create payment intent on backend
+        final intentRes = await ApiClient.request(
+          '/payments/create-intent',
+          method: 'POST',
+          body: {
+            'bookingId': bookingId,
+            'provider': provider,
+          },
+        );
+
+        // Step 3: Confirm payment
+        final payRes = await ApiClient.request(
+          '/payments',
+          method: 'POST',
+          body: {
+            'bookingId': bookingId,
+            'provider': provider,
+            'paymentIntentId': intentRes['paymentIntentId'],
+          },
+        );
+
+        if (mounted) {
+          final code = payRes['booking']?['confirmationCode'] as String? ?? '';
+          setState(() {
+            _bookingSuccess = provider == 'cash_on_arrival'
+                ? 'Reserved! Pay on Arrival code: $code'
+                : 'Stripe Payment Successful! Confirmation Code: $code';
+          });
+        }
       }
     } catch (e) {
       if (mounted) {
@@ -651,18 +709,38 @@ class _ListingDetailModalState extends State<_ListingDetailModal> {
                     ),
                   ],
                 ),
-                const SizedBox(width: 20),
+                const SizedBox(width: 10),
+                OutlinedButton.icon(
+                  icon: const Icon(Icons.auto_awesome_rounded, size: 16),
+                  label: const Text('Plan Trip', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+                  style: OutlinedButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 14),
+                  ),
+                  onPressed: () {
+                    Navigator.pop(context);
+                    final location = widget.listing['location'] as Map<String, dynamic>?;
+                    final city = location?['city'] as String? ?? 'Colombo';
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text('Open AI Assistant tab to plan trip for $city!'),
+                        backgroundColor: AppColors.primary,
+                        duration: const Duration(seconds: 3),
+                      ),
+                    );
+                  },
+                ),
+                const SizedBox(width: 8),
                 Expanded(
                   child: FilledButton(
                     onPressed: (_bookingBusy || _selectedSlotId == null) ? null : _bookNow,
-                    style: FilledButton.styleFrom(padding: const EdgeInsets.symmetric(vertical: 16)),
+                    style: FilledButton.styleFrom(padding: const EdgeInsets.symmetric(vertical: 14)),
                     child: _bookingBusy
                         ? const SizedBox(
                             height: 20,
                             width: 20,
                             child: CircularProgressIndicator(strokeWidth: 2.5, valueColor: AlwaysStoppedAnimation<Color>(Colors.white)),
                           )
-                        : const Text('Book Experience'),
+                        : const Text('Book Now', style: TextStyle(fontSize: 13)),
                   ),
                 ),
               ],

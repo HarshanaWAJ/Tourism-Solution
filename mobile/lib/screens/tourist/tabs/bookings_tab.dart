@@ -3,6 +3,7 @@ import '../../../services/api_client.dart';
 import '../../../theme/app_theme.dart';
 import '../../../widgets/custom_banner.dart';
 import '../../ride_tracking_screen.dart';
+import '../trip_plan_detail_sheet.dart';
 
 class BookingsTab extends StatefulWidget {
   const BookingsTab({super.key});
@@ -16,15 +17,17 @@ class _BookingsTabState extends State<BookingsTab> with SingleTickerProviderStat
 
   bool _loadingRides = true;
   bool _loadingBookings = true;
+  bool _loadingItineraries = true;
   String? _error;
 
   List<dynamic> _rides = [];
   List<dynamic> _bookings = [];
+  List<dynamic> _itineraries = [];
 
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 2, vsync: this);
+    _tabController = TabController(length: 3, vsync: this);
     _fetchAllData();
   }
 
@@ -37,6 +40,7 @@ class _BookingsTabState extends State<BookingsTab> with SingleTickerProviderStat
   Future<void> _fetchAllData() async {
     _fetchRides();
     _fetchBookings();
+    _fetchItineraries();
   }
 
   Future<void> _fetchRides() async {
@@ -81,6 +85,27 @@ class _BookingsTabState extends State<BookingsTab> with SingleTickerProviderStat
     }
   }
 
+  Future<void> _fetchItineraries() async {
+    setState(() {
+      _loadingItineraries = true;
+      _error = null;
+    });
+    try {
+      final res = await ApiClient.request('/itineraries/mine');
+      if (mounted) {
+        setState(() {
+          _itineraries = res['itineraries'] as List<dynamic>? ?? [];
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() => _error = e.toString());
+      }
+    } finally {
+      if (mounted) setState(() => _loadingItineraries = false);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return SafeArea(
@@ -105,11 +130,11 @@ class _BookingsTabState extends State<BookingsTab> with SingleTickerProviderStat
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      'My Bookings & Rides',
+                      'My Bookings & Plans',
                       style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: AppColors.textPrimary),
                     ),
                     Text(
-                      'Track all active and past activities',
+                      'Track all active rides, bookings & trip plans',
                       style: TextStyle(fontSize: 12, color: AppColors.textSecondary),
                     ),
                   ],
@@ -129,7 +154,8 @@ class _BookingsTabState extends State<BookingsTab> with SingleTickerProviderStat
               indicatorWeight: 3,
               tabs: const [
                 Tab(text: 'Taxi Rides'),
-                Tab(text: 'Hotels & Tours'),
+                Tab(text: 'Bookings'),
+                Tab(text: 'Saved Trip Plans'),
               ],
             ),
           ),
@@ -177,6 +203,23 @@ class _BookingsTabState extends State<BookingsTab> with SingleTickerProviderStat
                               itemBuilder: (context, index) {
                                 final booking = _bookings[index] as Map<String, dynamic>;
                                 return _BookingCard(booking: booking);
+                              },
+                            ),
+                ),
+
+                // Tab 3: Saved Trip Plans
+                RefreshIndicator(
+                  onRefresh: _fetchItineraries,
+                  child: _loadingItineraries
+                      ? const Center(child: CircularProgressIndicator(valueColor: AlwaysStoppedAnimation<Color>(AppColors.primary)))
+                      : _itineraries.isEmpty
+                          ? _buildEmptyState('No saved trip plans', 'Use the AI Assistant tab to build your custom trip plan!')
+                          : ListView.builder(
+                              padding: const EdgeInsets.all(16),
+                              itemCount: _itineraries.length,
+                              itemBuilder: (context, index) {
+                                final trip = _itineraries[index] as Map<String, dynamic>;
+                                return _SavedTripCard(trip: trip);
                               },
                             ),
                 ),
@@ -362,6 +405,91 @@ class _BookingCard extends StatelessWidget {
             ],
           ),
         ],
+      ),
+    );
+  }
+}
+
+class _SavedTripCard extends StatelessWidget {
+  final Map<String, dynamic> trip;
+
+  const _SavedTripCard({required this.trip});
+
+  @override
+  Widget build(BuildContext context) {
+    final title = trip['title'] as String? ?? 'Custom Trip Plan';
+    final items = (trip['items'] as List?) ?? [];
+    final startStr = trip['startDate'] != null
+        ? DateTime.parse(trip['startDate'] as String).toLocal().toString().split(' ').first
+        : '';
+    final endStr = trip['endDate'] != null
+        ? DateTime.parse(trip['endDate'] as String).toLocal().toString().split(' ').first
+        : '';
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 14),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: const Color(0xFFE2E8F0)),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.03),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: InkWell(
+        onTap: () => TripPlanDetailSheet.show(context, trip),
+        borderRadius: BorderRadius.circular(18),
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: AppColors.accent.withOpacity(0.15),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: const Row(
+                      children: [
+                        Icon(Icons.auto_awesome_rounded, size: 14, color: AppColors.primary),
+                        SizedBox(width: 4),
+                        Text('AI Itinerary', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 11, color: AppColors.primary)),
+                      ],
+                    ),
+                  ),
+                  const Text('Saved', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: AppColors.primary)),
+                ],
+              ),
+              const SizedBox(height: 12),
+              Text(title, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: AppColors.textPrimary)),
+              if (startStr.isNotEmpty && endStr.isNotEmpty) ...[
+                const SizedBox(height: 4),
+                Text('📅 $startStr to $endStr', style: const TextStyle(fontSize: 12, color: AppColors.textSecondary)),
+              ],
+              const SizedBox(height: 10),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text('${items.length} Stops Scheduled', style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: AppColors.primary)),
+                  const Row(
+                    children: [
+                      Text('View Full Itinerary', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: AppColors.primary)),
+                      Icon(Icons.arrow_forward_ios_rounded, size: 12, color: AppColors.primary),
+                    ],
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }

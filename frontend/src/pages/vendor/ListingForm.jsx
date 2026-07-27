@@ -31,8 +31,31 @@ export default function ListingForm({ listing, onClose, onSaved }) {
   const [form, setForm] = useState(() => toFormState(listing));
   const [existingImages, setExistingImages] = useState(listing?.images || []);
   const [newFiles, setNewFiles] = useState([]);
+  const [newPreviews, setNewPreviews] = useState([]);
+  const [dragOver, setDragOver] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
+
+  function addFiles(fileList) {
+    const allowed = Array.from(fileList).filter((f) =>
+      /^image\/(jpeg|png|webp|gif)$/.test(f.type)
+    );
+    if (allowed.length === 0) return;
+    const combined = [...newFiles, ...allowed].slice(0, 6 - existingImages.length);
+    setNewFiles(combined);
+    const previews = combined.map((f) => URL.createObjectURL(f));
+    setNewPreviews(previews);
+  }
+
+  function removeExisting(idx) {
+    setExistingImages((prev) => prev.filter((_, i) => i !== idx));
+  }
+
+  function removeNew(idx) {
+    const updated = newFiles.filter((_, i) => i !== idx);
+    setNewFiles(updated);
+    setNewPreviews(updated.map((f) => URL.createObjectURL(f)));
+  }
 
   async function handleSubmit(e) {
     e.preventDefault();
@@ -94,6 +117,9 @@ export default function ListingForm({ listing, onClose, onSaved }) {
     }
   }
 
+  const totalImages = existingImages.length + newFiles.length;
+  const canAddMore = totalImages < 6;
+
   return (
     <div className="fixed inset-0 bg-teal-950/40 flex items-center justify-center p-6 z-50">
       <div className="bg-sand-50 rounded-2xl p-6 max-w-lg w-full max-h-[90vh] overflow-y-auto">
@@ -126,22 +152,74 @@ export default function ListingForm({ listing, onClose, onSaved }) {
             </div>
           )}
 
+          {/* ── Photo Upload Section ── */}
           <div>
-            <label className="text-sm font-medium text-teal-900 block mb-1">Photos</label>
-            {existingImages.length > 0 && (
-              <div className="flex gap-2 mb-2 flex-wrap">
+            <div className="flex items-center justify-between mb-2">
+              <label className="text-sm font-semibold text-teal-900">Photos</label>
+              <span className="text-xs text-teal-950/40">{totalImages}/6 photos</span>
+            </div>
+
+            {/* Existing + New image previews grid */}
+            {totalImages > 0 && (
+              <div className="grid grid-cols-3 gap-2 mb-3">
                 {existingImages.map((img, idx) => (
-                  <img key={idx} src={imageUrl(img)} alt="" className="h-16 w-16 object-cover rounded-lg" />
+                  <div key={`ex-${idx}`} className="relative group aspect-square rounded-xl overflow-hidden border border-teal-900/10">
+                    <img src={imageUrl(img)} alt="" className="w-full h-full object-cover" />
+                    <button
+                      type="button"
+                      onClick={() => removeExisting(idx)}
+                      className="absolute top-1 right-1 bg-red-500 text-white rounded-full w-5 h-5 text-xs font-bold flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity shadow"
+                    >✕</button>
+                    {idx === 0 && (
+                      <span className="absolute bottom-1 left-1 bg-teal-900/80 text-white text-[10px] px-1.5 py-0.5 rounded-full">Cover</span>
+                    )}
+                  </div>
+                ))}
+                {newPreviews.map((src, idx) => (
+                  <div key={`new-${idx}`} className="relative group aspect-square rounded-xl overflow-hidden border border-teal-600/30">
+                    <img src={src} alt="" className="w-full h-full object-cover" />
+                    <button
+                      type="button"
+                      onClick={() => removeNew(idx)}
+                      className="absolute top-1 right-1 bg-red-500 text-white rounded-full w-5 h-5 text-xs font-bold flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity shadow"
+                    >✕</button>
+                    <span className="absolute bottom-1 left-1 bg-teal-600/80 text-white text-[10px] px-1.5 py-0.5 rounded-full">New</span>
+                  </div>
                 ))}
               </div>
             )}
-            <input
-              type="file"
-              accept="image/png,image/jpeg,image/webp,image/gif"
-              multiple
-              onChange={(e) => setNewFiles(e.target.files)}
-              className="text-sm"
-            />
+
+            {/* Drag-and-drop upload zone */}
+            {canAddMore && (
+              <label
+                className={`flex flex-col items-center justify-center gap-2 w-full border-2 border-dashed rounded-xl py-6 cursor-pointer transition-colors ${
+                  dragOver
+                    ? "border-teal-500 bg-teal-50"
+                    : "border-teal-900/20 bg-white hover:border-teal-500 hover:bg-teal-50/50"
+                }`}
+                onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
+                onDragLeave={() => setDragOver(false)}
+                onDrop={(e) => { e.preventDefault(); setDragOver(false); addFiles(e.dataTransfer.files); }}
+              >
+                <div className="text-3xl">📷</div>
+                <div className="text-center">
+                  <p className="text-sm font-semibold text-teal-800">
+                    {dragOver ? "Drop photos here" : "Drag & drop photos here"}
+                  </p>
+                  <p className="text-xs text-teal-950/40 mt-0.5">or click to browse • JPEG, PNG, WEBP • max 5 MB each</p>
+                </div>
+                <input
+                  type="file"
+                  accept="image/png,image/jpeg,image/webp,image/gif"
+                  multiple
+                  className="hidden"
+                  onChange={(e) => addFiles(e.target.files)}
+                />
+              </label>
+            )}
+            {!canAddMore && (
+              <p className="text-xs text-teal-950/40 text-center mt-1">Maximum 6 photos reached. Remove a photo to add more.</p>
+            )}
           </div>
 
           <input placeholder="Tags (comma separated, e.g. beach, family-friendly)" value={form.tags}

@@ -8,6 +8,36 @@ const itineraryItemSchema = new mongoose.Schema(
     listing: { type: mongoose.Schema.Types.ObjectId, ref: "Listing" },
     booking: { type: mongoose.Schema.Types.ObjectId, ref: "Booking" },
     notes: { type: String },
+    locationName: { type: String },
+    coordinates: { type: [Number] }, // [lng, lat]
+    travelFromPrevious: {
+      distanceMeters: Number,
+      durationSeconds: Number,
+      distanceText: String,
+      durationText: String,
+    },
+    weather: {
+      condition: String,
+      tempMax: Number,
+      tempMin: Number,
+      rainProb: Number,
+      icon: String,
+      recommendation: String,
+    },
+  },
+  { _id: false }
+);
+
+const dailyWeatherSchema = new mongoose.Schema(
+  {
+    day: Number,
+    date: String,
+    condition: String,
+    tempMax: Number,
+    tempMin: Number,
+    rainProb: Number,
+    icon: String,
+    recommendation: String,
   },
   { _id: false }
 );
@@ -24,6 +54,7 @@ const itinerarySchema = new mongoose.Schema(
     status: { type: String, enum: ["draft", "confirmed"], default: "draft", index: true },
     acceptedAt: { type: Date },
     items: [itineraryItemSchema],
+    dailyWeather: [dailyWeatherSchema],
     shareToken: { type: String, unique: true, sparse: true },
   },
   { timestamps: true }

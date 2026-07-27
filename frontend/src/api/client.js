@@ -26,6 +26,10 @@ export async function apiFetch(path, { method = "GET", body, auth = true } = {})
 
 export function imageUrl(idOrPath) {
   if (!idOrPath) return null;
+  // Pass through external URLs directly (Unsplash, CDN, etc.)
+  if (typeof idOrPath === "string" && (idOrPath.startsWith("http://") || idOrPath.startsWith("https://"))) {
+    return idOrPath;
+  }
   if (typeof idOrPath === "string" && idOrPath.startsWith("/api/")) {
     return `${API_URL.replace(/\/api$/, "")}${idOrPath}`;
   }
@@ -73,6 +77,7 @@ export const api = {
   createReview: (payload) => apiFetch("/reviews", { method: "POST", body: payload }),
 
   planTrip: (payload) => apiFetch("/ai/plan-trip", { method: "POST", body: payload }),
+  getWeatherForecast: (params) => apiFetch(`/ai/weather-forecast?${new URLSearchParams(params).toString()}`, { auth: false }),
   chat: (payload) => apiFetch("/ai/chat", { method: "POST", body: payload }),
   myItineraries: (status) => apiFetch(`/ai/itineraries/mine${status ? `?status=${status}` : ""}`),
   updateItinerary: (id, payload) => apiFetch(`/ai/itineraries/${id}`, { method: "PATCH", body: payload }),
@@ -89,6 +94,7 @@ export const api = {
   createTicket: (payload) => apiFetch("/support/tickets", { method: "POST", body: payload }),
   myTickets: () => apiFetch("/support/tickets/mine"),
 
+  createPaymentIntent: (payload) => apiFetch("/payments/create-intent", { method: "POST", body: payload }),
   pay: (payload) => apiFetch("/payments", { method: "POST", body: payload }),
 
   adminOverview: () => apiFetch("/admin/analytics/overview"),

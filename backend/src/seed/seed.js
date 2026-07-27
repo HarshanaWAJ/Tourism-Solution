@@ -34,13 +34,35 @@ async function run() {
 
   const vendor = await Vendor.create({
     owner: vendorUser._id,
-    businessName: "Ella Hilltop Guesthouse",
+    businessName: "Lanka Premier Hospitality & Tours",
     category: "hotel",
-    description: "Cozy hillside guesthouse with panoramic views of the Ella Gap.",
+    description: "Verified premier hospitality provider operating luxury hotels and guided city tours across Sri Lanka.",
     contactPhone: "+94 77 123 4567",
     contactEmail: "vendor@example.com",
     verificationStatus: "verified",
     verificationBadges: ["business_registration", "sltda_license"],
+  });
+
+  // Locations
+  const colomboLoc1 = await Location.create({
+    label: "Gangaramaya Temple & Beira Lake",
+    city: "Colombo",
+    region: "Western Province",
+    geo: { type: "Point", coordinates: [79.8560, 6.9167] },
+  });
+
+  const colomboLoc2 = await Location.create({
+    label: "National Museum of Colombo",
+    city: "Colombo",
+    region: "Western Province",
+    geo: { type: "Point", coordinates: [79.8610, 6.9100] },
+  });
+
+  const colomboLoc3 = await Location.create({
+    label: "Galle Face Oceanfront Hotel & Promenade",
+    city: "Colombo",
+    region: "Western Province",
+    geo: { type: "Point", coordinates: [79.8450, 6.9240] },
   });
 
   const ellaLocation = await Location.create({
@@ -57,7 +79,59 @@ async function run() {
     geo: { type: "Point", coordinates: [80.7603, 7.9570] },
   });
 
+  // Listings
   const listing1 = await Listing.create({
+    vendor: vendor._id,
+    title: "Colombo Heritage Cultural Walk & Temple Tour",
+    category: "attraction",
+    description: "Guided morning exploration of Gangaramaya Temple, Beira Lake, and Pettah Floating Market.",
+    location: colomboLoc1._id,
+    basePrice: 25,
+    currency: "USD",
+    priceUnit: "per_person",
+    tags: ["culture", "family-friendly", "city-tour"],
+    languagesSupported: ["en", "si"],
+    images: [
+      "https://images.unsplash.com/photo-1558618666-fcd25c85cd64?w=800&q=80",
+      "https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=800&q=80",
+    ],
+  });
+
+  const listing2 = await Listing.create({
+    vendor: vendor._id,
+    title: "National Museum & Colonial Artifacts Guided Pass",
+    category: "attraction",
+    description: "Comprehensive guided entry to Sri Lanka's crown regalia, ancient bronzes, and royal artifacts.",
+    location: colomboLoc2._id,
+    basePrice: 15,
+    currency: "USD",
+    priceUnit: "per_person",
+    tags: ["culture", "museum", "family-friendly"],
+    languagesSupported: ["en", "si", "de"],
+    images: [
+      "https://images.unsplash.com/photo-1582555172866-f73bb12a2ab3?w=800&q=80",
+      "https://images.unsplash.com/photo-1566127444979-b3d2b654e3d7?w=800&q=80",
+    ],
+  });
+
+  const listing3 = await Listing.create({
+    vendor: vendor._id,
+    title: "Galle Face Ocean Suite & Dining Experience",
+    category: "hotel",
+    description: "Luxurious seaside hotel suite overlooking the Indian Ocean and Galle Face Promenade.",
+    location: colomboLoc3._id,
+    basePrice: 120,
+    currency: "USD",
+    priceUnit: "per_night",
+    tags: ["luxury", "food", "oceanview"],
+    languagesSupported: ["en", "si"],
+    images: [
+      "https://images.unsplash.com/photo-1571896349842-33c89424de2d?w=800&q=80",
+      "https://images.unsplash.com/photo-1520250497591-112f2f40a3f4?w=800&q=80",
+    ],
+  });
+
+  const listing4 = await Listing.create({
     vendor: vendor._id,
     title: "Ella Hilltop Guesthouse - Deluxe Room",
     category: "hotel",
@@ -68,9 +142,13 @@ async function run() {
     priceUnit: "per_night",
     tags: ["mountain", "family-friendly", "budget"],
     languagesSupported: ["en", "si", "de"],
+    images: [
+      "https://images.unsplash.com/photo-1464822759023-fed622ff2c3b?w=800&q=80",
+      "https://images.unsplash.com/photo-1501854140801-50d01698950b?w=800&q=80",
+    ],
   });
 
-  const listing2 = await Listing.create({
+  const listing5 = await Listing.create({
     vendor: vendor._id,
     title: "Sigiriya Rock Sunrise Guided Hike",
     category: "guide",
@@ -81,22 +159,29 @@ async function run() {
     priceUnit: "per_person",
     tags: ["culture", "hiking", "wildlife"],
     languagesSupported: ["en", "si", "fr"],
+    images: [
+      "https://images.unsplash.com/photo-1586348943529-beaae6c28db9?w=800&q=80",
+      "https://images.unsplash.com/photo-1567157577867-05ccb1388e66?w=800&q=80",
+    ],
   });
 
   const today = new Date();
   const slots = [];
+  const listingsList = [listing1, listing2, listing3, listing4, listing5];
+
   for (let i = 1; i <= 14; i++) {
     const d = new Date(today);
     d.setDate(d.getDate() + i);
-    slots.push({ listing: listing1._id, date: d, capacityTotal: 3, capacityBooked: 0, status: "open" });
-    slots.push({
-      listing: listing2._id,
-      date: d,
-      startTime: "05:30",
-      endTime: "09:00",
-      capacityTotal: 8,
-      capacityBooked: 0,
-      status: "open",
+    listingsList.forEach((lst) => {
+      slots.push({
+        listing: lst._id,
+        date: d,
+        startTime: "09:00",
+        endTime: "17:00",
+        capacityTotal: 10,
+        capacityBooked: 0,
+        status: "open",
+      });
     });
   }
   await AvailabilitySlot.insertMany(slots);
@@ -109,11 +194,7 @@ async function run() {
     region: "Colombo",
   });
 
-  console.log("[seed] done.");
-  console.log("[seed] Login as admin:  admin@lankatourism.lk / Admin123!");
-  console.log("[seed] Login as tourist: tourist@example.com / Tourist123!");
-  console.log("[seed] Login as vendor:  vendor@example.com / Vendor123!");
-
+  console.log("[seed] done seeding multi-city listings.");
   await mongoose.disconnect();
 }
 

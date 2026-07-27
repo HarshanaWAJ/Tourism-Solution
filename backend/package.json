@@ -10,7 +10,8 @@
   "scripts": {
     "dev": "nodemon src/server.js",
     "start": "node src/server.js",
-    "seed": "node src/seed/seed.js"
+    "seed": "node src/seed/seed.js",
+    "patch-images": "node src/seed/patch-images.js"
   },
   "dependencies": {
     "bcryptjs": "^2.4.3",
