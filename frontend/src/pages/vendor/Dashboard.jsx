@@ -118,9 +118,16 @@ export default function VendorDashboard() {
               <div className="flex items-center gap-2">
                 <p className="font-medium truncate">{l.title}</p>
                 <span className={`text-[10px] uppercase tracking-wide px-2 py-0.5 rounded-full ${
-                  l.isActive ? "bg-teal-50 text-teal-700" : "bg-teal-950/5 text-teal-950/40"
+                  l.isActive ? "bg-teal-50 text-teal-700 font-semibold" : "bg-teal-950/5 text-teal-950/40"
                 }`}>
                   {l.isActive ? "Published" : "Unpublished"}
+                </span>
+                <span className={`text-[10px] uppercase tracking-wide px-2 py-0.5 rounded-full ${
+                  l.bookingRequired || l.category === "hotel"
+                    ? "bg-emerald-50 text-emerald-800 font-semibold border border-emerald-200"
+                    : "bg-amber-50 text-amber-800 border border-amber-200"
+                }`}>
+                  {l.bookingRequired || l.category === "hotel" ? "🗓️ Booking Required" : "📍 Walk-in Direct"}
                 </span>
               </div>
               <p className="text-sm text-teal-950/60 capitalize">
@@ -147,19 +154,54 @@ export default function VendorDashboard() {
         ))}
       </div>
 
-      <h2 className="font-display text-xl mb-4">Recent bookings</h2>
+      <h2 className="font-display text-xl mb-4">Manage Booking Requests</h2>
       <div className="space-y-3 mb-10">
-        {bookings.length === 0 && <p className="text-sm text-teal-950/50">No bookings yet.</p>}
+        {bookings.length === 0 && <p className="text-sm text-teal-950/50">No booking requests yet.</p>}
         {bookings.map((b) => (
-          <div key={b._id} className="border border-teal-900/10 rounded-xl p-4 flex items-center justify-between bg-white">
+          <div key={b._id} className="border border-teal-900/10 rounded-xl p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between bg-white gap-3">
             <div>
-              <p className="font-medium">{b.listing?.title}</p>
-              <p className="text-sm text-teal-950/60">{b.tourist?.name} · {b.currency} {b.totalPrice} · <span className="capitalize">{b.status.replace("_", " ")}</span></p>
+              <div className="flex items-center gap-2">
+                <p className="font-semibold text-teal-950">{b.listing?.title}</p>
+                <span className={`text-[10px] uppercase font-bold tracking-wider px-2.5 py-0.5 rounded-full ${
+                  b.status === "confirmed"
+                    ? "bg-emerald-100 text-emerald-800"
+                    : b.status === "cancelled"
+                    ? "bg-red-100 text-red-800"
+                    : b.status === "pending_confirmation"
+                    ? "bg-amber-100 text-amber-800 animate-pulse"
+                    : "bg-gray-100 text-gray-700"
+                }`}>
+                  {b.status.replace(/_/g, " ")}
+                </span>
+              </div>
+              <p className="text-sm text-teal-950/70 mt-0.5">
+                Customer: <strong>{b.tourist?.name}</strong> ({b.tourist?.email}) · Party of {b.partySize} · Total: <strong>{b.currency} {b.totalPrice}</strong>
+              </p>
+              {b.cancellationReason && (
+                <p className="text-xs text-red-600 mt-1">Reason: {b.cancellationReason}</p>
+              )}
             </div>
+
             {b.status === "pending_confirmation" && (
-              <div className="flex gap-2">
-                <button onClick={() => updateBooking(b._id, "confirmed")} className="text-xs font-medium bg-teal-900 text-sand-50 rounded-full px-4 py-2">Confirm</button>
-                <button onClick={() => updateBooking(b._id, "cancelled")} className="text-xs font-medium border border-teal-900/20 rounded-full px-4 py-2">Decline</button>
+              <div className="flex gap-2 shrink-0">
+                <button
+                  onClick={() => updateBooking(b._id, "confirmed")}
+                  className="text-xs font-semibold bg-emerald-700 text-white rounded-full px-4 py-2 hover:bg-emerald-800 transition shadow-xs"
+                >
+                  ✓ Approve Booking
+                </button>
+                <button
+                  onClick={() => {
+                    const reason = window.prompt("Reason for rejecting this booking (optional):");
+                    if (reason !== null) {
+                      api.updateBookingStatus(b._id, { status: "cancelled", cancellationReason: reason })
+                        .then(refresh);
+                    }
+                  }}
+                  className="text-xs font-semibold bg-red-50 text-red-700 border border-red-200 rounded-full px-4 py-2 hover:bg-red-100 transition"
+                >
+                  ✕ Reject Booking
+                </button>
               </div>
             )}
           </div>

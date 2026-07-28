@@ -93,6 +93,8 @@ export const api = {
   alerts: (params = {}) => apiFetch(`/support/alerts?${new URLSearchParams(params).toString()}`, { auth: false }),
   createTicket: (payload) => apiFetch("/support/tickets", { method: "POST", body: payload }),
   myTickets: () => apiFetch("/support/tickets/mine"),
+  adminTickets: (params = {}) => apiFetch(`/support/tickets?${new URLSearchParams(params).toString()}`),
+  adminUpdateTicket: (id, payload) => apiFetch(`/support/tickets/${id}`, { method: "PATCH", body: payload }),
 
   createPaymentIntent: (payload) => apiFetch("/payments/create-intent", { method: "POST", body: payload }),
   pay: (payload) => apiFetch("/payments", { method: "POST", body: payload }),

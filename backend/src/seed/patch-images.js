@@ -52,17 +52,14 @@ async function run() {
   await connectDB();
   console.log("[patch-images] connected, patching listings...");
 
-  for (const patch of PATCHES) {
-    const result = await Listing.updateMany(
-      { title: { $regex: patch.titleContains, $options: "i" } },
-      { $set: { images: patch.images } }
-    );
-    console.log(
-      `  "${patch.titleContains}" → matched ${result.matchedCount}, updated ${result.modifiedCount}`
-    );
-  }
+  // Ensure all hotels have bookingRequired: true, and non-hotels default to false
+  const hotelResult = await Listing.updateMany({ category: "hotel" }, { $set: { bookingRequired: true } });
+  console.log(`  Hotels enforced bookingRequired=true → updated ${hotelResult.modifiedCount}`);
 
-  console.log("[patch-images] done. No other data was modified.");
+  const nonHotelResult = await Listing.updateMany({ category: { $ne: "hotel" }, bookingRequired: { $exists: false } }, { $set: { bookingRequired: false } });
+  console.log(`  Non-hotels defaulted bookingRequired=false → updated ${nonHotelResult.modifiedCount}`);
+
+  console.log("[patch-images] done. Data patched successfully.");
   await mongoose.disconnect();
 }
 

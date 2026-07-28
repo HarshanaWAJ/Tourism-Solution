@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { api, imageUrl } from "../../api/client.js";
 import TaxiFleet from "./TaxiFleet.jsx";
 
-const TABS = ["Overview", "Verification", "Places", "Disputes", "Reviews", "Taxi Fleet"];
+const TABS = ["Overview", "Verification", "Places", "Support Tickets", "Disputes", "Reviews", "Taxi Fleet"];
 
 export default function AdminCenter() {
   const [tab, setTab] = useState("Overview");
@@ -10,9 +10,9 @@ export default function AdminCenter() {
   return (
     <div className="max-w-6xl mx-auto px-6 py-12">
       <h1 className="font-display text-3xl font-semibold mb-2">Admin Center</h1>
-      <p className="text-teal-950/60 mb-8">Verification, moderation, analytics, and disputes across the platform.</p>
+      <p className="text-teal-950/60 mb-8">Verification, moderation, support tickets, analytics, and disputes across the platform.</p>
 
-      <div className="flex gap-1 bg-teal-50 rounded-full p-1 mb-8 w-fit">
+      <div className="flex gap-1 bg-teal-50 rounded-full p-1 mb-8 w-fit flex-wrap">
         {TABS.map((t) => (
           <button key={t} onClick={() => setTab(t)}
             className={`px-4 py-2 rounded-full text-sm font-medium transition ${tab === t ? "bg-teal-900 text-sand-50" : "text-teal-900/70"}`}>
@@ -24,6 +24,7 @@ export default function AdminCenter() {
       {tab === "Overview" && <Overview />}
       {tab === "Verification" && <Verification />}
       {tab === "Places" && <PlaceSubmissions />}
+      {tab === "Support Tickets" && <SupportTickets />}
       {tab === "Disputes" && <Disputes />}
       {tab === "Reviews" && <ReviewModeration />}
       {tab === "Taxi Fleet" && <TaxiFleet />}
@@ -42,6 +43,7 @@ function Overview() {
     { label: "Verified vendors", value: data.verifiedVendorCount },
     { label: "Active listings", value: data.listingCount },
     { label: "Pending places", value: data.pendingPlaceSubmissions },
+    { label: "Open tickets", value: data.openSupportTickets ?? 0 },
     { label: "Open disputes", value: data.openDisputes },
     { label: "Drivers", value: data.driverCount },
     { label: "Drivers online", value: data.onlineDriverCount },
@@ -260,3 +262,136 @@ function ReviewModeration() {
     </div>
   );
 }
+
+function SupportTickets() {
+  const [tickets, setTickets] = useState(null);
+  const [statusFilter, setStatusFilter] = useState("all");
+  const [busyId, setBusyId] = useState(null);
+
+  async function refresh() {
+    setTickets(null);
+    const params = statusFilter !== "all" ? { status: statusFilter } : {};
+    const res = await api.adminTickets(params);
+    setTickets(res.tickets || []);
+  }
+
+  useEffect(() => { refresh(); }, [statusFilter]); // eslint-disable-line
+
+  async function updateStatus(id, status) {
+    setBusyId(id);
+    try {
+      await api.adminUpdateTicket(id, { status });
+      await refresh();
+    } finally {
+      setBusyId(null);
+    }
+  }
+
+  return (
+    <div>
+      <div className="flex gap-1 bg-white border border-teal-900/10 rounded-full p-1 mb-6 w-fit flex-wrap">
+        {["all", "open", "in_progress", "resolved", "closed"].map((s) => (
+          <button
+            key={s}
+            onClick={() => setStatusFilter(s)}
+            className={`px-4 py-1.5 rounded-full text-xs font-medium capitalize transition ${
+              statusFilter === s ? "bg-teal-900 text-sand-50" : "text-teal-900/70"
+            }`}
+          >
+            {s.replace("_", " ")}
+          </button>
+        ))}
+      </div>
+
+      {!tickets && <p className="text-teal-950/50">Loading support tickets…</p>}
+      {tickets && tickets.length === 0 && (
+        <p className="text-teal-950/50">No support tickets found.</p>
+      )}
+
+      <div className="space-y-4">
+        {tickets?.map((t) => {
+          const isEmergency = t.priority === "emergency" || t.category === "safety";
+          return (
+            <div
+              key={t._id}
+              className={`border rounded-2xl p-5 bg-white space-y-3 ${
+                isEmergency ? "border-red-300 bg-red-50/30" : "border-teal-900/10"
+              }`}
+            >
+              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2">
+                <div>
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className="font-semibold text-teal-950 text-base">{t.subject}</span>
+                    <span
+                      className={`text-[10px] uppercase font-bold tracking-wider px-2.5 py-0.5 rounded-full ${
+                        t.category === "safety" || t.priority === "emergency"
+                          ? "bg-red-600 text-white"
+                          : t.priority === "high"
+                          ? "bg-amber-500 text-white"
+                          : "bg-teal-100 text-teal-800"
+                      }`}
+                    >
+                      {t.priority} {t.category ? `· ${t.category}` : ""}
+                    </span>
+                    <span
+                      className={`text-[10px] uppercase font-semibold px-2.5 py-0.5 rounded-full ${
+                        t.status === "open"
+                          ? "bg-amber-100 text-amber-800"
+                          : t.status === "in_progress"
+                          ? "bg-blue-100 text-blue-800"
+                          : t.status === "resolved"
+                          ? "bg-emerald-100 text-emerald-800"
+                          : "bg-gray-100 text-gray-700"
+                      }`}
+                    >
+                      {t.status.replace("_", " ")}
+                    </span>
+                  </div>
+                  <p className="text-xs text-teal-950/60 mt-1">
+                    Submitted by <strong>{t.user?.name || "User"}</strong> ({t.user?.email || "N/A"}) ·{" "}
+                    {new Date(t.createdAt).toLocaleString()}
+                  </p>
+                </div>
+
+                <div className="flex gap-1.5 shrink-0 flex-wrap">
+                  {t.status !== "in_progress" && t.status !== "resolved" && (
+                    <button
+                      disabled={busyId === t._id}
+                      onClick={() => updateStatus(t._id, "in_progress")}
+                      className="text-xs font-medium border border-blue-300 text-blue-800 bg-blue-50 rounded-full px-3 py-1.5 hover:bg-blue-100 transition disabled:opacity-50"
+                    >
+                      Mark In Progress
+                    </button>
+                  )}
+                  {t.status !== "resolved" && (
+                    <button
+                      disabled={busyId === t._id}
+                      onClick={() => updateStatus(t._id, "resolved")}
+                      className="text-xs font-semibold bg-emerald-700 text-white rounded-full px-3.5 py-1.5 hover:bg-emerald-800 transition disabled:opacity-50"
+                    >
+                      ✓ Resolve Ticket
+                    </button>
+                  )}
+                  {t.status !== "closed" && (
+                    <button
+                      disabled={busyId === t._id}
+                      onClick={() => updateStatus(t._id, "closed")}
+                      className="text-xs font-medium border border-gray-300 text-gray-700 bg-gray-50 rounded-full px-3 py-1.5 hover:bg-gray-100 transition disabled:opacity-50"
+                    >
+                      Close
+                    </button>
+                  )}
+                </div>
+              </div>
+
+              <p className="text-sm text-teal-950/80 leading-relaxed bg-sand-50/50 p-3 rounded-xl border border-teal-900/5">
+                {t.description}
+              </p>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+

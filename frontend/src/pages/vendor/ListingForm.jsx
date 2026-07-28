@@ -8,10 +8,20 @@ const CURRENCIES = ["USD", "LKR", "EUR", "GBP"];
 function toFormState(listing) {
   if (!listing) {
     return {
-      title: "", category: "hotel", description: "", basePrice: "", currency: "USD",
-      priceUnit: "per_night", city: "", region: "", tags: "", isActive: true,
+      title: "",
+      category: "hotel",
+      description: "",
+      basePrice: "",
+      currency: "USD",
+      priceUnit: "per_night",
+      city: "",
+      region: "",
+      tags: "",
+      isActive: true,
+      bookingRequired: true,
     };
   }
+  const isHotel = listing.category === "hotel";
   return {
     title: listing.title || "",
     category: listing.category || "hotel",
@@ -23,6 +33,7 @@ function toFormState(listing) {
     region: listing.location?.region || "",
     tags: (listing.tags || []).join(", "),
     isActive: listing.isActive ?? true,
+    bookingRequired: isHotel ? true : Boolean(listing.bookingRequired),
   };
 }
 
@@ -57,6 +68,15 @@ export default function ListingForm({ listing, onClose, onSaved }) {
     setNewPreviews(updated.map((f) => URL.createObjectURL(f)));
   }
 
+  function handleCategoryChange(newCategory) {
+    const isHotel = newCategory === "hotel";
+    setForm((prev) => ({
+      ...prev,
+      category: newCategory,
+      bookingRequired: isHotel ? true : prev.bookingRequired,
+    }));
+  }
+
   async function handleSubmit(e) {
     e.preventDefault();
     setBusy(true);
@@ -73,6 +93,9 @@ export default function ListingForm({ listing, onClose, onSaved }) {
         images = [...existingImages, ...uploaded.map((i) => i.url)];
       }
 
+      const isHotel = form.category === "hotel";
+      const bookingRequired = isHotel ? true : Boolean(form.bookingRequired);
+
       if (isEditing) {
         await api.updateListing(listing._id, {
           title: form.title,
@@ -84,6 +107,7 @@ export default function ListingForm({ listing, onClose, onSaved }) {
           tags,
           images,
           isActive: form.isActive,
+          bookingRequired,
         });
       } else {
         const res = await api.createListing({
@@ -95,10 +119,11 @@ export default function ListingForm({ listing, onClose, onSaved }) {
           priceUnit: form.priceUnit,
           tags,
           images,
+          bookingRequired,
           location: { label: form.title, city: form.city, region: form.region },
         });
 
-        // Seed 14 days of availability so it's immediately bookable
+        // Seed 14 days of availability so it's immediately bookable if needed
         const today = new Date();
         const slots = Array.from({ length: 14 }).map((_, i) => {
           const d = new Date(today);
@@ -119,6 +144,7 @@ export default function ListingForm({ listing, onClose, onSaved }) {
 
   const totalImages = existingImages.length + newFiles.length;
   const canAddMore = totalImages < 6;
+  const isHotel = form.category === "hotel";
 
   return (
     <div className="fixed inset-0 bg-teal-950/40 flex items-center justify-center p-6 z-50">
@@ -127,39 +153,98 @@ export default function ListingForm({ listing, onClose, onSaved }) {
           <h2 className="font-display text-2xl">{isEditing ? "Edit listing" : "New listing"}</h2>
           <button onClick={onClose} className="text-teal-950/50 text-xl leading-none">&times;</button>
         </div>
+
         <form onSubmit={handleSubmit} className="space-y-3">
-          <input required placeholder="Title" value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })}
-            className="w-full rounded-xl border border-teal-900/15 px-3 py-2 text-sm" />
+          <input
+            required
+            placeholder="Title"
+            value={form.title}
+            onChange={(e) => setForm({ ...form, title: e.target.value })}
+            className="w-full rounded-xl border border-teal-900/15 px-3 py-2 text-sm"
+          />
+
           <div className="grid grid-cols-2 gap-3">
-            <select value={form.category} onChange={(e) => setForm({ ...form, category: e.target.value })}
-              className="rounded-xl border border-teal-900/15 px-3 py-2 text-sm capitalize">
-              {CATEGORIES.map((c) => <option key={c} value={c}>{c}</option>)}
+            <select
+              value={form.category}
+              onChange={(e) => handleCategoryChange(e.target.value)}
+              className="rounded-xl border border-teal-900/15 px-3 py-2 text-sm capitalize"
+            >
+              {CATEGORIES.map((c) => (
+                <option key={c} value={c}>{c}</option>
+              ))}
             </select>
-            <select value={form.priceUnit} onChange={(e) => setForm({ ...form, priceUnit: e.target.value })}
-              className="rounded-xl border border-teal-900/15 px-3 py-2 text-sm">
-              {PRICE_UNITS.map((u) => <option key={u} value={u}>{u.replace("_", " ")}</option>)}
+            <select
+              value={form.priceUnit}
+              onChange={(e) => setForm({ ...form, priceUnit: e.target.value })}
+              className="rounded-xl border border-teal-900/15 px-3 py-2 text-sm"
+            >
+              {PRICE_UNITS.map((u) => (
+                <option key={u} value={u}>{u.replace("_", " ")}</option>
+              ))}
             </select>
           </div>
-          <textarea placeholder="Description" rows={3} value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })}
-            className="w-full rounded-xl border border-teal-900/15 px-3 py-2 text-sm" />
+
+          <textarea
+            placeholder="Description"
+            rows={3}
+            value={form.description}
+            onChange={(e) => setForm({ ...form, description: e.target.value })}
+            className="w-full rounded-xl border border-teal-900/15 px-3 py-2 text-sm"
+          />
 
           {!isEditing && (
             <div className="grid grid-cols-2 gap-3">
-              <input required placeholder="City" value={form.city} onChange={(e) => setForm({ ...form, city: e.target.value })}
-                className="rounded-xl border border-teal-900/15 px-3 py-2 text-sm" />
-              <input placeholder="Region" value={form.region} onChange={(e) => setForm({ ...form, region: e.target.value })}
-                className="rounded-xl border border-teal-900/15 px-3 py-2 text-sm" />
+              <input
+                required
+                placeholder="City"
+                value={form.city}
+                onChange={(e) => setForm({ ...form, city: e.target.value })}
+                className="rounded-xl border border-teal-900/15 px-3 py-2 text-sm"
+              />
+              <input
+                placeholder="Region"
+                value={form.region}
+                onChange={(e) => setForm({ ...form, region: e.target.value })}
+                className="rounded-xl border border-teal-900/15 px-3 py-2 text-sm"
+              />
             </div>
           )}
 
-          {/* ── Photo Upload Section ── */}
+          {/* Booking Requirement Toggle */}
+          <div className="bg-white p-3.5 rounded-xl border border-teal-900/10 space-y-1">
+            <label className="flex items-center justify-between cursor-pointer">
+              <div className="flex items-center gap-2">
+                <input
+                  type="checkbox"
+                  disabled={isHotel}
+                  checked={isHotel ? true : form.bookingRequired}
+                  onChange={(e) => setForm({ ...form, bookingRequired: e.target.checked })}
+                  className="rounded border-teal-900/20 text-teal-900 focus:ring-teal-800 h-4 w-4"
+                />
+                <span className="text-sm font-semibold text-teal-900">Enable Advance Online Booking</span>
+              </div>
+              {isHotel && (
+                <span className="text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 bg-amber-100 text-amber-800 rounded-full">
+                  Locked for Hotels
+                </span>
+              )}
+            </label>
+            <p className="text-xs text-teal-950/60 pl-6">
+              {isHotel
+                ? "Hotels always require advance booking and cannot be disabled."
+                : form.bookingRequired
+                ? "Tourists must select dates and book online before visiting."
+                : "Walk-in location — tourists can visit directly without online booking."}
+            </p>
+          </div>
+
+          {/* Photo Upload Section */}
           <div>
             <div className="flex items-center justify-between mb-2">
               <label className="text-sm font-semibold text-teal-900">Photos</label>
               <span className="text-xs text-teal-950/40">{totalImages}/6 photos</span>
             </div>
 
-            {/* Existing + New image previews grid */}
             {totalImages > 0 && (
               <div className="grid grid-cols-3 gap-2 mb-3">
                 {existingImages.map((img, idx) => (
@@ -189,7 +274,6 @@ export default function ListingForm({ listing, onClose, onSaved }) {
               </div>
             )}
 
-            {/* Drag-and-drop upload zone */}
             {canAddMore && (
               <label
                 className={`flex flex-col items-center justify-center gap-2 w-full border-2 border-dashed rounded-xl py-6 cursor-pointer transition-colors ${
@@ -222,34 +306,49 @@ export default function ListingForm({ listing, onClose, onSaved }) {
             )}
           </div>
 
-          <input placeholder="Tags (comma separated, e.g. beach, family-friendly)" value={form.tags}
+          <input
+            placeholder="Tags (comma separated, e.g. beach, family-friendly)"
+            value={form.tags}
             onChange={(e) => setForm({ ...form, tags: e.target.value })}
-            className="w-full rounded-xl border border-teal-900/15 px-3 py-2 text-sm" />
+            className="w-full rounded-xl border border-teal-900/15 px-3 py-2 text-sm"
+          />
 
           <div className="grid grid-cols-2 gap-3">
-            <input required type="number" placeholder="Base price" value={form.basePrice} onChange={(e) => setForm({ ...form, basePrice: e.target.value })}
-              className="rounded-xl border border-teal-900/15 px-3 py-2 text-sm" />
-            <select value={form.currency} onChange={(e) => setForm({ ...form, currency: e.target.value })}
-              className="rounded-xl border border-teal-900/15 px-3 py-2 text-sm">
-              {CURRENCIES.map((c) => <option key={c} value={c}>{c}</option>)}
+            <input
+              required
+              type="number"
+              placeholder="Base price"
+              value={form.basePrice}
+              onChange={(e) => setForm({ ...form, basePrice: e.target.value })}
+              className="rounded-xl border border-teal-900/15 px-3 py-2 text-sm"
+            />
+            <select
+              value={form.currency}
+              onChange={(e) => setForm({ ...form, currency: e.target.value })}
+              className="rounded-xl border border-teal-900/15 px-3 py-2 text-sm"
+            >
+              {CURRENCIES.map((c) => (
+                <option key={c} value={c}>{c}</option>
+              ))}
             </select>
           </div>
 
           {isEditing && (
             <label className="flex items-center gap-2 text-sm text-teal-950/70">
-              <input type="checkbox" checked={form.isActive} onChange={(e) => setForm({ ...form, isActive: e.target.checked })} />
+              <input
+                type="checkbox"
+                checked={form.isActive}
+                onChange={(e) => setForm({ ...form, isActive: e.target.checked })}
+              />
               Published (visible to tourists)
             </label>
           )}
 
-          {!isEditing && (
-            <p className="text-xs text-teal-950/40">
-              City and region can't be changed after creation yet — edit availability and pricing any time.
-            </p>
-          )}
-
           {error && <p className="text-sm text-red-600">{error}</p>}
-          <button disabled={busy} className="w-full bg-teal-900 text-sand-50 rounded-full py-2.5 text-sm font-medium hover:bg-teal-800 transition disabled:opacity-60">
+          <button
+            disabled={busy}
+            className="w-full bg-teal-900 text-sand-50 rounded-full py-2.5 text-sm font-medium hover:bg-teal-800 transition disabled:opacity-60"
+          >
             {busy ? "Saving…" : isEditing ? "Save changes" : "Create listing"}
           </button>
         </form>

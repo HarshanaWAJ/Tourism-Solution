@@ -75,13 +75,16 @@ router.get("/vendor/mine", requireAuth, requireRole("vendor"), async (req, res) 
 
 // Vendor: create a listing
 router.post("/", requireAuth, requireRole("vendor", "admin"), async (req, res) => {
-  const { title, category, description, location, basePrice, currency, priceUnit, tags, images, languagesSupported } = req.body;
+  const { title, category, description, location, basePrice, currency, priceUnit, tags, images, languagesSupported, bookingRequired } = req.body;
   const vendor = await Vendor.findOne({ owner: req.user.id });
   if (!vendor) return res.status(400).json({ error: "No vendor profile found for this account" });
 
   const loc = location._id
     ? await Location.findById(location._id)
     : await Location.create(location);
+
+  // Hotels are always booking-required regardless of what was sent
+  const resolvedBookingRequired = category === "hotel" ? true : (bookingRequired ?? false);
 
   const listing = await Listing.create({
     vendor: vendor._id,
@@ -95,6 +98,7 @@ router.post("/", requireAuth, requireRole("vendor", "admin"), async (req, res) =
     tags,
     images,
     languagesSupported,
+    bookingRequired: resolvedBookingRequired,
   });
 
   res.status(201).json({ listing });
@@ -109,11 +113,13 @@ router.patch("/:id", requireAuth, requireRole("vendor", "admin"), async (req, re
   }
   const editable = [
     "title", "category", "description", "basePrice", "currency", "priceUnit",
-    "tags", "images", "languagesSupported", "isActive",
+    "tags", "images", "languagesSupported", "isActive", "bookingRequired",
   ];
   for (const field of editable) {
     if (field in req.body) listing[field] = req.body[field];
   }
+  // Hotels must always remain booking-required — enforce here too
+  if (listing.category === "hotel") listing.bookingRequired = true;
   await listing.save();
   res.json({ listing });
 });

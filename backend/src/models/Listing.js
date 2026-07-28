@@ -23,11 +23,20 @@ const listingSchema = new mongoose.Schema(
     tags: [{ type: String }], // e.g. "family-friendly", "wildlife", "beach"
     languagesSupported: [{ type: String }],
     isActive: { type: Boolean, default: true },
+    bookingRequired: { type: Boolean, default: false }, // hotels forced to true; others optional
     ratingAverage: { type: Number, default: 0 },
     ratingCount: { type: Number, default: 0 },
   },
   { timestamps: true }
 );
+
+// Hotels are always booking-required — cannot be overridden
+listingSchema.pre("save", function (next) {
+  if (this.category === "hotel") {
+    this.bookingRequired = true;
+  }
+  next();
+});
 
 listingSchema.index({ title: "text", description: "text", tags: "text" });
 

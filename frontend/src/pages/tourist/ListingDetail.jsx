@@ -133,40 +133,62 @@ export default function ListingDetail() {
             <span className="text-sm font-normal text-teal-950/50"> /{listing.priceUnit?.replace("per_", "")}</span>
           </p>
 
-          <label className="text-sm font-medium text-teal-900 block mt-4 mb-1">Available date</label>
-          <select
-            value={selectedSlot}
-            onChange={(e) => setSelectedSlot(e.target.value)}
-            className="w-full rounded-xl border border-teal-900/15 px-3 py-2 text-sm bg-white"
-          >
-            <option value="">Select a date</option>
-            {availability.map((slot) => (
-              <option key={slot._id} value={slot._id} disabled={slot.status === "sold_out"}>
-                {new Date(slot.date).toLocaleDateString()} {slot.startTime ? `· ${slot.startTime}` : ""}
-                {slot.status === "sold_out" ? " (sold out)" : ` · ${slot.capacityTotal - slot.capacityBooked} left`}
-              </option>
-            ))}
-          </select>
+          {listing.bookingRequired || listing.category === "hotel" ? (
+            <>
+              <div className="mt-3 mb-2 flex items-center gap-1.5 text-xs text-teal-800 font-semibold bg-teal-50 px-2.5 py-1 rounded-lg border border-teal-900/10">
+                <span>🗓️ Advance Booking Required</span>
+              </div>
+              <label className="text-sm font-medium text-teal-900 block mt-4 mb-1">Available date</label>
+              <select
+                value={selectedSlot}
+                onChange={(e) => setSelectedSlot(e.target.value)}
+                className="w-full rounded-xl border border-teal-900/15 px-3 py-2 text-sm bg-white"
+              >
+                <option value="">Select a date</option>
+                {availability.map((slot) => (
+                  <option key={slot._id} value={slot._id} disabled={slot.status === "sold_out"}>
+                    {new Date(slot.date).toLocaleDateString()} {slot.startTime ? `· ${slot.startTime}` : ""}
+                    {slot.status === "sold_out" ? " (sold out)" : ` · ${slot.capacityTotal - slot.capacityBooked} left`}
+                  </option>
+                ))}
+              </select>
 
-          <label className="text-sm font-medium text-teal-900 block mt-3 mb-1">Party size</label>
-          <input
-            type="number" min={1} value={partySize}
-            onChange={(e) => setPartySize(e.target.value)}
-            className="w-full rounded-xl border border-teal-900/15 px-3 py-2 text-sm"
-          />
+              <label className="text-sm font-medium text-teal-900 block mt-3 mb-1">Party size</label>
+              <input
+                type="number" min={1} value={partySize}
+                onChange={(e) => setPartySize(e.target.value)}
+                className="w-full rounded-xl border border-teal-900/15 px-3 py-2 text-sm"
+              />
 
-          {error && !showCheckout && <p className="text-sm text-red-600 mt-3">{error}</p>}
+              {error && !showCheckout && <p className="text-sm text-red-600 mt-3">{error}</p>}
 
-          <button
-            onClick={initiateBooking}
-            disabled={!selectedSlot || status === "creating_booking"}
-            className="w-full mt-5 bg-teal-900 text-sand-50 rounded-full py-3 font-medium hover:bg-teal-800 transition disabled:opacity-50 shadow-xs"
-          >
-            {status === "creating_booking" ? "Initializing..." : "Book now & Pay"}
-          </button>
-          <p className="text-xs text-teal-950/50 mt-3 text-center">
-            Instant booking confirmation with Stripe Card or Pay on Arrival.
-          </p>
+              <button
+                onClick={initiateBooking}
+                disabled={!selectedSlot || status === "creating_booking"}
+                className="w-full mt-5 bg-teal-900 text-sand-50 rounded-full py-3 font-medium hover:bg-teal-800 transition disabled:opacity-50 shadow-xs"
+              >
+                {status === "creating_booking" ? "Initializing..." : "Book now & Pay"}
+              </button>
+              <p className="text-xs text-teal-950/50 mt-3 text-center">
+                Instant booking confirmation with Stripe Card or Pay on Arrival.
+              </p>
+            </>
+          ) : (
+            <div className="mt-4 p-4 rounded-xl bg-amber-50 border border-amber-200 text-amber-950 space-y-2">
+              <div className="flex items-center gap-2 text-amber-900 font-semibold text-sm">
+                <span>📍 Direct Visit / Walk-in Location</span>
+              </div>
+              <p className="text-xs text-amber-900/80 leading-relaxed">
+                Advance online booking is <strong>not required</strong> for this spot. You can visit directly during opening hours and pay on-site.
+              </p>
+              <button
+                onClick={() => navigate(`/planner?city=${encodeURIComponent(listing.location?.city || '')}&listingId=${listing._id}`)}
+                className="w-full mt-2 bg-amber-600 text-white rounded-full py-2 text-xs font-semibold hover:bg-amber-700 transition"
+              >
+                + Add to AI Trip Plan
+              </button>
+            </div>
+          )}
         </aside>
       </div>
 

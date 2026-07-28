@@ -9,6 +9,7 @@ import Location from "../models/Location.js";
 import Driver from "../models/Driver.js";
 import Ride from "../models/Ride.js";
 import PlaceSubmission from "../models/PlaceSubmission.js";
+import SupportTicket from "../models/SupportTicket.js";
 import { requireAuth, requireRole } from "../middleware/auth.js";
 import FareConfig from "../models/FareConfig.js";
 import { getAllFareConfigs } from "../utils/fare.js";
@@ -225,6 +226,7 @@ router.get("/analytics/overview", async (req, res) => {
     onlineDriverCount,
     rideStats,
     pendingPlaceSubmissions,
+    openSupportTickets,
   ] = await Promise.all([
     User.countDocuments({ role: "tourist" }),
     Vendor.countDocuments(),
@@ -240,6 +242,7 @@ router.get("/analytics/overview", async (req, res) => {
       { $group: { _id: "$status", count: { $sum: 1 }, revenue: { $sum: "$fareFinal" } } },
     ]),
     PlaceSubmission.countDocuments({ status: "pending" }),
+    SupportTicket.countDocuments({ status: { $in: ["open", "in_progress"] } }),
   ]);
 
   res.json({
@@ -253,6 +256,7 @@ router.get("/analytics/overview", async (req, res) => {
     onlineDriverCount,
     ridesByStatus: rideStats,
     pendingPlaceSubmissions,
+    openSupportTickets,
   });
 });
 
