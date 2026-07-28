@@ -3,7 +3,7 @@ import Listing from "../models/Listing.js";
 import Itinerary from "../models/Itinerary.js";
 import Location from "../models/Location.js";
 import { requireAuth, requireRole } from "../middleware/auth.js";
-import { runLocalLlm, localModelFileExists } from "../llm/localLlm.js";
+import { runLocalLlm, runLocalLlmWithHistory, localModelFileExists } from "../llm/localLlm.js";
 import { getWeatherForecast, getCityCoords, CITY_COORDINATES } from "../utils/weather.js";
 import { getTravelInfo } from "../utils/routing.js";
 
@@ -343,41 +343,119 @@ router.delete("/itineraries/:id", requireAuth, requireRole("tourist"), async (re
   res.json({ success: true });
 });
 
-// Interactive AI Assistant Chat Endpoint with Weather Context Integration
+// ── AI Assistant Chat ─────────────────────────────────────────────────────────
 router.post("/chat", requireAuth, async (req, res) => {
-  const { message, language = "en" } = req.body;
+  const { message, history = [], language = "en", city = "colombo" } = req.body;
   if (!message) return res.status(400).json({ error: "message is required" });
 
-  const lowerMsg = message.toLowerCase();
-  let detectedCity = Object.keys(CITY_COORDINATES).find((c) => lowerMsg.includes(c)) || "colombo";
+  // Detect city from message or use the one sent from the trip planner form
+  const lowerMsg = message.toLowerCase().trim();
+  const detectedCity =
+    Object.keys(CITY_COORDINATES).find((c) => lowerMsg.includes(c)) ||
+    city.toLowerCase() ||
+    "colombo";
   const cityCoords = getCityCoords(detectedCity);
+  const cityLabel = detectedCity.charAt(0).toUpperCase() + detectedCity.slice(1);
 
+  // Fetch live weather to inject as context
   const weatherData = await getWeatherForecast(cityCoords.lat, cityCoords.lng);
-  const todayWeather = weatherData[0] || { condition: "Partly Cloudy", tempMax: 30, tempMin: 24, icon: "⛅" };
+  const today = weatherData[0] || { condition: "Partly Cloudy", tempMax: 30, tempMin: 24, rainProb: 20, icon: "⛅" };
+  const tomorrow = weatherData[1] || today;
 
-  const weatherContextStr = `Live Weather in ${detectedCity.toUpperCase()}: ${todayWeather.icon} ${todayWeather.condition}, ${todayWeather.tempMax}°C / ${todayWeather.tempMin}°C, Rain Chance: ${todayWeather.rainProb}%.`;
+  const weatherContext = `
+LIVE WEATHER DATA (today, ${cityLabel}):
+- Condition: ${today.icon} ${today.condition}
+- Temperature: ${today.tempMax}°C high / ${today.tempMin}°C low
+- Rain probability: ${today.rainProb}%
+- Tomorrow: ${tomorrow.icon} ${tomorrow.condition}, ${tomorrow.tempMax}°C / ${tomorrow.tempMin}°C, ${tomorrow.rainProb}% rain
+`.trim();
+
+  // ── Build a powerful system prompt ──────────────────────────────────────────
+  const systemPrompt = `You are Ayubowan AI, a knowledgeable and friendly Sri Lanka tourism assistant built into the Lanka Tourism platform. You have real-time weather data and deep expertise about Sri Lanka.
+
+${weatherContext}
+
+ABOUT YOU:
+- You speak naturally and conversationally, like a well-traveled local friend
+- You give practical, specific, and helpful advice
+- You use a warm, welcoming tone — occasionally using "Ayubowan!" (Sri Lankan greeting) appropriately
+- You adapt your response length to the question: short for simple questions, detailed for complex ones
+- You use emojis sparingly to keep responses friendly but not overwhelming
+- Language preference: ${language}
+
+YOUR EXPERTISE:
+- All Sri Lanka destinations: Colombo, Kandy, Galle, Ella, Sigiriya, Mirissa, Trincomalee, Nuwara Eliya, Anuradhapura, Polonnaruwa, Arugam Bay, Jaffna, and more
+- Sri Lankan cuisine: rice & curry, kottu roti, hoppers (appa), string hoppers, lamprais, pol sambol, wood apple, king coconut
+- Transport: trains (Kandy-Ella scenic route), buses, tuk-tuks, PickMe app, private drivers
+- Culture: Buddhism, temple etiquette, Kandy Perahera festival, Vesak, local customs
+- Wildlife: Yala National Park (leopards), Minneriya (elephant gathering), Bundala (flamingos), whale watching in Mirissa
+- Safety, budget planning, visa information, best times to visit each region
+- Weather patterns: SW monsoon (May-Sep west coast), NE monsoon (Oct-Jan east coast)
+
+IMPORTANT RULES:
+- Always consider the live weather when giving advice (e.g. if it's raining, suggest indoor alternatives)  
+- If the user asks about booking, tell them to use the Explore tab in this app
+- If the user asks to plan a trip, tell them to use the Smart Trip Planner tab
+- Never make up specific prices, hotel names, or contact details you're not sure about
+- If you don't know something specific, say so honestly and suggest where they can find out
+- Keep responses focused — don't dump everything you know, answer what was actually asked`;
 
   let replyText = null;
 
+  // ── Try Llama model with full conversation history ───────────────────────────
   if (localModelFileExists()) {
-    replyText = await callLocalLlm(
-      `${weatherContextStr}\nUser: ${message}`,
-      {
-        systemPrompt: `You are a Sri Lanka tourism assistant. You HAVE live weather data (${weatherContextStr}). Language: "${language}". Answer in 1-3 short sentences.`,
-        maxTokens: 100,
-        temperature: 0.7,
-        timeoutMs: 40_000,
+    try {
+      // Build history array: filter to last 6 turns max to stay within context window
+      const recentHistory = history.slice(-12); // last 6 user+assistant pairs
+      const fullHistory = [
+        ...recentHistory,
+        { role: "user", content: message },
+      ];
+
+      replyText = await runLocalLlmWithHistory(fullHistory, {
+        systemPrompt,
+        temperature: 0.75,
+        maxTokens: 350,
+        timeoutMs: 90_000, // 90s for richer responses on CPU
+      });
+
+      // Clean up common LLM artifacts
+      if (replyText) {
+        replyText = replyText
+          .replace(/^(Assistant:|AI:|Ayubowan AI:)\s*/i, "")
+          .trim();
       }
-    );
+    } catch (err) {
+      console.error("[ai/chat] LLM error:", err.message);
+      replyText = null;
+    }
   }
 
+  // ── Keyword fallback (only used if model unavailable) ───────────────────────
   if (!replyText) {
-    if (lowerMsg.includes("weather") || lowerMsg.includes("rain") || lowerMsg.includes("temp") || lowerMsg.includes("forecast") || lowerMsg.includes("climate")) {
-      replyText = `🌤️ ${weatherContextStr} ${todayWeather.recommendation}`;
-    } else if (lowerMsg.includes("plan") || lowerMsg.includes("trip") || lowerMsg.includes("route") || lowerMsg.includes("itinerary")) {
-      replyText = `Ayubowan! Use our Smart Trip Planner form above to generate a weather-optimized itinerary with travel times for ${detectedCity.toUpperCase()}. (${weatherContextStr})`;
+    const weatherLine = `${today.icon} ${today.condition}, ${today.tempMax}°C / ${today.tempMin}°C, ${today.rainProb}% rain chance`;
+    const isRainy = (today.rainProb || 0) > 60;
+    const isThunder = today.condition?.toLowerCase().includes("thunder") || today.condition?.toLowerCase().includes("storm");
+
+    if (/^(hi|hello|hey|ayubowan|good morning|good afternoon|good evening)\b/.test(lowerMsg)) {
+      replyText = `Ayubowan! 👋 Welcome! I'm your Lanka Tourism assistant.\n\nToday in **${cityLabel}**: ${weatherLine}.\n\nAsk me anything about Sri Lanka — weather, places to visit, food, transport, safety, or culture!`;
+    } else if (/\b(weather|rain|sunny|forecast|temperature|storm|thunder|hot|cold)\b/.test(lowerMsg)) {
+      const advice = isThunder ? "⚡ Thunderstorm warning — stay indoors and avoid outdoor activities." : isRainy ? "🌧️ High rain chance — bring an umbrella and consider indoor attractions." : "☀️ Great conditions for outdoor sightseeing!";
+      replyText = `**Live weather in ${cityLabel}:**\n${weatherLine}.\n\n${advice}`;
+    } else if (/\b(best place|attraction|must see|what to do|sightseeing|famous|popular)\b/.test(lowerMsg)) {
+      const catalog = CITY_ATTRACTIONS_CATALOG[detectedCity] || CITY_ATTRACTIONS_CATALOG.colombo;
+      const top = catalog.slice(0, 3).map((a, i) => `${i + 1}. **${a.title}** — ${a.description}`).join("\n");
+      replyText = `Top attractions in **${cityLabel}** 🏛️:\n\n${top}\n\nWeather today: ${weatherLine}.`;
+    } else if (/\b(food|eat|restaurant|cuisine|curry|kottu|hoppers)\b/.test(lowerMsg)) {
+      replyText = `Must-try Sri Lankan food 🍛:\n1. **Rice & Curry** — the national dish\n2. **Kottu Roti** — chopped flatbread stir-fry\n3. **Hoppers (Appa)** — crispy bowl-shaped pancakes\n4. **King Coconut** — fresh and refreshing!\n\nFor restaurants, explore the Explore tab in this app.`;
+    } else if (/\b(transport|bus|train|taxi|tuk.?tuk|how to get|getting around)\b/.test(lowerMsg)) {
+      replyText = `Getting around Sri Lanka 🚌:\n- 🚆 **Train** — scenic, affordable (Kandy–Ella is world-famous)\n- 🛺 **Tuk-tuk** — great for short trips\n- 🚗 **PickMe / Uber** — app taxis in cities\n- 🚐 **Private driver** — best for multi-day tours\n\nCheck the **Rides** tab to book a taxi!`;
+    } else if (/\b(plan|trip|itinerary|help me plan)\b/.test(lowerMsg)) {
+      replyText = `I'd love to help plan your trip! 🗺️\n\nUse the **Smart Trip Planner** above — enter your city, dates, and interests, and it'll auto-generate a weather-optimized itinerary with travel times.\n\nCurrent weather in **${cityLabel}**: ${weatherLine}.`;
     } else {
-      replyText = `Ayubowan! I am your Lanka Tourism assistant. ${weatherContextStr} How can I help with your journey today?`;
+      const catalog = CITY_ATTRACTIONS_CATALOG[detectedCity] || CITY_ATTRACTIONS_CATALOG.colombo;
+      const tip = catalog[Math.floor(Math.random() * catalog.length)];
+      replyText = `Ayubowan! 🌴 Today in **${cityLabel}**: ${weatherLine}.\n\n${isRainy ? "🌧️ Looks rainy — indoor activities recommended." : "☀️ Great day to explore!"}\n\n💡 **Tip:** ${tip ? `${tip.title} — ${tip.description}` : "Try the local rice & curry for an authentic Sri Lankan experience!"}\n\nAsk me about weather, food, transport, places to visit, safety, or culture!`;
     }
   }
 

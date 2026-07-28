@@ -261,11 +261,12 @@ export default function Planner() {
     e.preventDefault();
     if (!chatInput.trim()) return;
     const message = chatInput;
+    const history = chatLog.map((m) => ({ role: m.from === "user" ? "user" : "assistant", content: m.text }));
     setChatLog((log) => [...log, { from: "user", text: message }]);
     setChatInput("");
     setChatBusy(true);
     try {
-      const res = await api.chat({ message });
+      const res = await api.chat({ message, history, city: form.city || "colombo" });
       setChatLog((log) => [...log, { from: "assistant", text: res.reply }]);
     } catch (err) {
       setChatLog((log) => [...log, { from: "assistant", text: `Sorry — ${err.message}` }]);

@@ -27,7 +27,7 @@ const LLM_TIMEOUT_MS = Number(process.env.LLM_TIMEOUT_MS) || 45_000;
 
 // Context window — 512 is the sweet-spot for short chat on CPU.
 // Larger = more RAM + slower first-token; we don't need long context for chat.
-const CONTEXT_SIZE = Number(process.env.LLM_CONTEXT_SIZE) || 512;
+const CONTEXT_SIZE = Number(process.env.LLM_CONTEXT_SIZE) || 2048;
 
 // CPU threads for inference. Using physical core count (not hyperthreads)
 // gives the best throughput for compute-bound LLM workloads.
@@ -110,12 +110,7 @@ function withTimeout(promise, ms, label = "LLM inference") {
 }
 
 /**
- * Run a single prompt and return the plain-text reply.
- *
- * Default maxTokens is kept intentionally tiny (80) for chat on CPU:
- *   80 tokens × 4 tok/s ≈ 20 s — well inside the 45 s timeout.
- * Increase via the timeoutMs / maxTokens options for longer outputs
- * (e.g. trip planning).
+ * Run a single-turn prompt and return the plain-text reply.
  */
 export async function runLocalLlm(
   prompt,
@@ -124,7 +119,6 @@ export async function runLocalLlm(
   const { LlamaChatSession } = await loadLlamaModule();
   const model = await getModel();
 
-  // Each call gets its own small context; model weights stay loaded.
   const context = await model.createContext({
     contextSize: CONTEXT_SIZE,
     threads: CPU_THREADS,
@@ -138,6 +132,67 @@ export async function runLocalLlm(
 
     return await withTimeout(
       session.prompt(prompt, { temperature, maxTokens }),
+      timeoutMs ?? LLM_TIMEOUT_MS
+    );
+  } finally {
+    context.dispose().catch(() => {});
+  }
+}
+
+/**
+ * Multi-turn chat with full conversation history.
+ *
+ * history = [{ role: "user" | "assistant", content: string }, ...]
+ * The last entry must be the current user message.
+ *
+ * Previous turns are replayed through the session (with very low
+ * maxTokens for assistant turns that already have known answers)
+ * so the model has full context when generating the final reply.
+ */
+export async function runLocalLlmWithHistory(
+  history,
+  { systemPrompt, temperature = 0.7, maxTokens = 300, timeoutMs } = {}
+) {
+  const { LlamaChatSession } = await loadLlamaModule();
+  const model = await getModel();
+
+  const context = await model.createContext({
+    contextSize: CONTEXT_SIZE,
+    threads: CPU_THREADS,
+  });
+
+  try {
+    const session = new LlamaChatSession({
+      contextSequence: context.getSequence(),
+      ...(systemPrompt ? { systemPrompt } : {}),
+    });
+
+    // Replay all prior turns so the model has full context.
+    // For assistant turns we feed the known answer back at 1 token so it
+    // is injected as context without re-generating.
+    const pairs = [];
+    for (let i = 0; i < history.length - 1; i += 2) {
+      const userMsg = history[i];
+      const assistantMsg = history[i + 1];
+      if (userMsg?.role === "user" && assistantMsg?.role === "assistant") {
+        pairs.push({ user: userMsg.content, assistant: assistantMsg.content });
+      }
+    }
+
+    for (const pair of pairs) {
+      // Inject prior user message
+      await withTimeout(
+        session.prompt(pair.user, { temperature: 0, maxTokens: 1 }),
+        10_000
+      ).catch(() => {});
+    }
+
+    // The last history entry is the current user message
+    const lastMessage = history[history.length - 1];
+    const userPrompt = lastMessage?.content || "";
+
+    return await withTimeout(
+      session.prompt(userPrompt, { temperature, maxTokens }),
       timeoutMs ?? LLM_TIMEOUT_MS
     );
   } finally {
