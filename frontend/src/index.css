@@ -2,12 +2,79 @@
 @tailwind components;
 @tailwind utilities;
 
+html {
+  scroll-behavior: smooth;
+}
+
 body {
-  @apply bg-sand-50 text-teal-950 font-body;
+  @apply bg-sand-50 text-teal-950 font-body antialiased;
 }
 
 h1, h2, h3, .font-display {
   font-family: "Fraunces", serif;
+}
+
+::selection {
+  background: #EBBE5B;
+  color: #0A2E2E;
+}
+
+/* Visible keyboard focus everywhere — accessibility floor */
+:focus-visible {
+  outline: 2px solid #C4841A;
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* ---- Signature system: travel-document motifs ---- */
+
+/* Passport / customs stamp — used for "Verified", "Confirmed", trust marks */
+.stamp {
+  @apply inline-flex items-center justify-center rounded-full border-2 border-dashed;
+  transform: rotate(-9deg);
+}
+
+/* Ticket stub — perforated tear line between a card's main body and its counterfoil */
+.ticket-tear {
+  position: relative;
+  border-top: 2px dashed rgba(10, 46, 46, 0.18);
+}
+.ticket-tear::before,
+.ticket-tear::after {
+  content: "";
+  position: absolute;
+  top: -10px;
+  width: 20px;
+  height: 20px;
+  border-radius: 9999px;
+  background: inherit;
+  box-shadow: inset 0 0 0 2px rgba(10, 46, 46, 0.06);
+}
+.ticket-tear::before { left: -10px; }
+.ticket-tear::after { right: -10px; }
+
+/* Route line — a dotted itinerary path used between sequential steps */
+.route-line {
+  background-image: radial-gradient(circle, currentColor 1.5px, transparent 1.5px);
+  background-size: 8px 2px;
+  background-repeat: repeat-x;
+  background-position: center;
+  height: 2px;
+}
+
+/* Manifest / ledger numerals for prices, codes, coordinates */
+.ledger {
+  font-family: "IBM Plex Mono", ui-monospace, monospace;
+  font-variant-numeric: tabular-nums;
 }
 
 @media print {

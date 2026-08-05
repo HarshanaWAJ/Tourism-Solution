@@ -1,5 +1,7 @@
 import { useState } from "react";
+import { X, Camera } from "lucide-react";
 import { api, imageUrl } from "../../api/client.js";
+import { Button, ErrorBanner } from "../../components/ui.jsx";
 
 const CATEGORIES = ["hotel", "guide", "transport", "restaurant", "activity", "attraction", "package"];
 const PRICE_UNITS = ["per_night", "per_person", "per_trip", "per_hour", "flat"];
@@ -147,11 +149,11 @@ export default function ListingForm({ listing, onClose, onSaved }) {
   const isHotel = form.category === "hotel";
 
   return (
-    <div className="fixed inset-0 bg-teal-950/40 flex items-center justify-center p-6 z-50">
-      <div className="bg-sand-50 rounded-2xl p-6 max-w-lg w-full max-h-[90vh] overflow-y-auto">
+    <div className="fixed inset-0 bg-teal-950/40 backdrop-blur-sm flex items-center justify-center p-6 z-50">
+      <div className="bg-sand-50 rounded-2xl p-6 max-w-lg w-full max-h-[90vh] overflow-y-auto shadow-lift">
         <div className="flex justify-between items-center mb-4">
           <h2 className="font-display text-2xl">{isEditing ? "Edit listing" : "New listing"}</h2>
-          <button onClick={onClose} className="text-teal-950/50 text-xl leading-none">&times;</button>
+          <button onClick={onClose} className="text-teal-950/50 hover:text-teal-950 p-1" aria-label="Close"><X className="w-5 h-5" /></button>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-3">
@@ -224,8 +226,8 @@ export default function ListingForm({ listing, onClose, onSaved }) {
                 <span className="text-sm font-semibold text-teal-900">Enable Advance Online Booking</span>
               </div>
               {isHotel && (
-                <span className="text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 bg-amber-100 text-amber-800 rounded-full">
-                  Locked for Hotels
+                <span className="text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 bg-saffron-100 text-saffron-700 rounded-full">
+                  Locked for hotels
                 </span>
               )}
             </label>
@@ -253,8 +255,8 @@ export default function ListingForm({ listing, onClose, onSaved }) {
                     <button
                       type="button"
                       onClick={() => removeExisting(idx)}
-                      className="absolute top-1 right-1 bg-red-500 text-white rounded-full w-5 h-5 text-xs font-bold flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity shadow"
-                    >✕</button>
+                      className="absolute top-1 right-1 bg-ruby-600 text-white rounded-full w-5 h-5 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity shadow"
+                    ><X className="w-3 h-3" /></button>
                     {idx === 0 && (
                       <span className="absolute bottom-1 left-1 bg-teal-900/80 text-white text-[10px] px-1.5 py-0.5 rounded-full">Cover</span>
                     )}
@@ -266,8 +268,8 @@ export default function ListingForm({ listing, onClose, onSaved }) {
                     <button
                       type="button"
                       onClick={() => removeNew(idx)}
-                      className="absolute top-1 right-1 bg-red-500 text-white rounded-full w-5 h-5 text-xs font-bold flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity shadow"
-                    >✕</button>
+                      className="absolute top-1 right-1 bg-ruby-600 text-white rounded-full w-5 h-5 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity shadow"
+                    ><X className="w-3 h-3" /></button>
                     <span className="absolute bottom-1 left-1 bg-teal-600/80 text-white text-[10px] px-1.5 py-0.5 rounded-full">New</span>
                   </div>
                 ))}
@@ -285,7 +287,7 @@ export default function ListingForm({ listing, onClose, onSaved }) {
                 onDragLeave={() => setDragOver(false)}
                 onDrop={(e) => { e.preventDefault(); setDragOver(false); addFiles(e.dataTransfer.files); }}
               >
-                <div className="text-3xl">📷</div>
+                <Camera className="w-7 h-7 text-teal-700/60" />
                 <div className="text-center">
                   <p className="text-sm font-semibold text-teal-800">
                     {dragOver ? "Drop photos here" : "Drag & drop photos here"}
@@ -344,13 +346,10 @@ export default function ListingForm({ listing, onClose, onSaved }) {
             </label>
           )}
 
-          {error && <p className="text-sm text-red-600">{error}</p>}
-          <button
-            disabled={busy}
-            className="w-full bg-teal-900 text-sand-50 rounded-full py-2.5 text-sm font-medium hover:bg-teal-800 transition disabled:opacity-60"
-          >
+          <ErrorBanner>{error}</ErrorBanner>
+          <Button disabled={busy} variant="dark" size="lg" className="w-full">
             {busy ? "Saving…" : isEditing ? "Save changes" : "Create listing"}
-          </button>
+          </Button>
         </form>
       </div>
     </div>

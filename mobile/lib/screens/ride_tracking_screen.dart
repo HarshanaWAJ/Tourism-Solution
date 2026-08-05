@@ -408,23 +408,23 @@ class _StatusBadge extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    Color bg = const Color(0xFFE2E8F0);
+    Color bg = const Color(0xFFE2EAE8);
     Color text = AppColors.textPrimary;
     String label = status.replaceAll('_', ' ').toUpperCase();
 
     switch (status) {
       case 'searching':
-        bg = const Color(0xFFE0F2FE);
-        text = const Color(0xFF0284C7);
+        bg = const Color(0xFFDCEAE8);
+        text = const Color(0xFF114B4B);
         break;
       case 'accepted':
       case 'arriving':
-        bg = const Color(0xFFFEF3C7);
-        text = const Color(0xFFD97706);
+        bg = const Color(0xFFFBEFD4);
+        text = const Color(0xFF9C6512);
         break;
       case 'in_progress':
-        bg = const Color(0xFFCCFBF1);
-        text = const Color(0xFF0D9488);
+        bg = const Color(0xFFDCEAE8);
+        text = const Color(0xFF1C7A7A);
         break;
       case 'completed':
         bg = AppColors.successBg;

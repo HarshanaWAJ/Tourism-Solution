@@ -236,7 +236,7 @@ class _CategoryChip extends StatelessWidget {
         margin: const EdgeInsets.only(right: 8),
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
         decoration: BoxDecoration(
-          color: selected ? AppColors.primary : const Color(0xFFF1F5F9),
+          color: selected ? AppColors.primary : const Color(0xFFEEF6F5),
           borderRadius: BorderRadius.circular(14),
         ),
         child: Row(
@@ -280,7 +280,7 @@ class _ListingCard extends StatelessWidget {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: const Color(0xFFE2E8F0), width: 1),
+        border: Border.all(color: const Color(0xFFE2EAE8), width: 1),
         boxShadow: [
           BoxShadow(
             color: Colors.black.withOpacity(0.04),
@@ -455,7 +455,7 @@ class _ListingDetailModalState extends State<_ListingDetailModal> {
             ),
             const Divider(),
             ListTile(
-              leading: const Icon(Icons.payments_rounded, color: Color(0xFFD97706)),
+              leading: const Icon(Icons.payments_rounded, color: Color(0xFF9C6512)),
               title: const Text('Pay on Arrival / Cash', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
               subtitle: const Text('Guaranteed slot, pay directly at venue', style: TextStyle(fontSize: 11)),
               onTap: () => Navigator.pop(ctx, 'cash_on_arrival'),
@@ -656,7 +656,7 @@ class _ListingDetailModalState extends State<_ListingDetailModal> {
                                       margin: const EdgeInsets.only(right: 10),
                                       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                                       decoration: BoxDecoration(
-                                        color: selected ? AppColors.primary : const Color(0xFFF1F5F9),
+                                        color: selected ? AppColors.primary : const Color(0xFFEEF6F5),
                                         borderRadius: BorderRadius.circular(14),
                                       ),
                                       child: Column(

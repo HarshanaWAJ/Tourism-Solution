@@ -1,14 +1,21 @@
 import { useEffect, useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
+import { Search, MapPin, Star, Sparkles, ImageOff } from "lucide-react";
 import { api, imageUrl } from "../../api/client.js";
 import TrustBadge from "../../components/TrustBadge.jsx";
 import SuggestPlaceForm from "../../components/SuggestPlaceForm.jsx";
+import { Button, Card, EmptyState, Spinner, ErrorBanner } from "../../components/ui.jsx";
 
 const CATEGORIES = ["", "hotel", "guide", "transport", "restaurant", "activity", "attraction"];
 
 export default function Discover() {
   const navigate = useNavigate();
-  const [filters, setFilters] = useState({ query: "", category: "", city: "" });
+  const [searchParams] = useSearchParams();
+  const [filters, setFilters] = useState({
+    query: searchParams.get("query") || "",
+    category: searchParams.get("category") || "",
+    city: searchParams.get("city") || "",
+  });
   const [results, setResults] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -39,16 +46,19 @@ export default function Discover() {
 
   return (
     <div className="max-w-6xl mx-auto px-6 py-12">
-      <h1 className="font-display text-3xl font-semibold mb-1">Discover Locations & Activities</h1>
+      <h1 className="font-display text-3xl font-semibold mb-1">Discover locations &amp; activities</h1>
       <p className="text-teal-950/60 mb-8">Search verified hotels, guides, activities, and attractions across Sri Lanka.</p>
 
-      <form onSubmit={runSearch} className="grid sm:grid-cols-4 gap-3 mb-10 bg-teal-50 p-4 rounded-2xl">
-        <input
-          placeholder="Search (e.g. surfing, tuk-tuk, Sigiriya)"
-          value={filters.query}
-          onChange={(e) => setFilters({ ...filters, query: e.target.value })}
-          className="sm:col-span-2 rounded-xl border border-teal-900/15 px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-teal-700 bg-white text-sm"
-        />
+      <Card as="form" onSubmit={runSearch} className="grid sm:grid-cols-4 gap-3 mb-10 p-4 bg-teal-50 border-teal-900/8 shadow-none">
+        <div className="sm:col-span-2 relative">
+          <Search className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-teal-900/40" />
+          <input
+            placeholder="Search (e.g. surfing, tuk-tuk, Sigiriya)"
+            value={filters.query}
+            onChange={(e) => setFilters({ ...filters, query: e.target.value })}
+            className="w-full rounded-xl border border-teal-900/15 pl-10 pr-4 py-2.5 focus:outline-none focus:border-teal-700 bg-white text-sm"
+          />
+        </div>
         <select
           value={filters.category}
           onChange={(e) => setFilters({ ...filters, category: e.target.value })}
@@ -57,53 +67,59 @@ export default function Discover() {
           <option value="">All categories</option>
           {CATEGORIES.filter(Boolean).map((c) => <option key={c} value={c}>{c}</option>)}
         </select>
-        <input
-          placeholder="City (e.g. Ella)"
-          value={filters.city}
-          onChange={(e) => setFilters({ ...filters, city: e.target.value })}
-          className="rounded-xl border border-teal-900/15 px-4 py-2.5 bg-white text-sm"
-        />
-        <button className="sm:col-span-4 bg-teal-900 text-sand-50 rounded-xl py-2.5 font-medium hover:bg-teal-800 transition shadow-xs">
-          Search Locations
-        </button>
-      </form>
+        <div className="relative">
+          <MapPin className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-teal-900/40" />
+          <input
+            placeholder="City (e.g. Ella)"
+            value={filters.city}
+            onChange={(e) => setFilters({ ...filters, city: e.target.value })}
+            className="w-full rounded-xl border border-teal-900/15 pl-10 pr-4 py-2.5 bg-white text-sm"
+          />
+        </div>
+        <Button className="sm:col-span-4" variant="dark" size="lg">Search locations</Button>
+      </Card>
 
-      {loading && <p className="text-teal-950/50">Searching locations…</p>}
-      {error && <p className="text-red-600 font-medium">{error}</p>}
-      {!loading && results.length === 0 && <p className="text-teal-950/50">No listings matched — try broadening your search.</p>}
+      {loading && <Spinner label="Searching locations…" className="mb-6" />}
+      <ErrorBanner>{error}</ErrorBanner>
+      {!loading && results.length === 0 && (
+        <EmptyState
+          icon={Search}
+          title="Nothing matched yet"
+          body="Try broadening your search, or tell us what's missing below."
+        />
+      )}
 
       <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
         {results.map((listing) => (
-          <div
+          <Card
             key={listing._id}
             onClick={() => navigate(`/listing/${listing._id}`)}
-            className="rounded-2xl border border-teal-900/10 overflow-hidden hover:shadow-lg transition bg-white flex flex-col justify-between cursor-pointer group"
+            className="overflow-hidden hover:shadow-lift hover:-translate-y-0.5 transition flex flex-col justify-between cursor-pointer group"
           >
             <div>
               {listing.images?.[0] ? (
-                <img
-                  src={imageUrl(listing.images[0])}
-                  alt={listing.title}
-                  className="h-44 w-full object-cover group-hover:scale-102 transition duration-300"
-                />
+                <img src={imageUrl(listing.images[0])} alt={listing.title} className="h-44 w-full object-cover group-hover:scale-105 transition duration-500" />
               ) : (
-                <div className="h-44 w-full bg-teal-50 flex items-center justify-center text-teal-900/30 text-sm">
-                  No photo available
+                <div className="h-44 w-full bg-teal-50 flex flex-col items-center justify-center text-teal-900/30 gap-1.5">
+                  <ImageOff className="w-5 h-5" />
+                  <span className="text-xs">No photo yet</span>
                 </div>
               )}
               <div className="p-5">
                 <span className="text-xs uppercase tracking-widest text-saffron-600 font-semibold">{listing.category}</span>
                 <h3 className="font-display text-xl mt-1 mb-1 font-semibold text-teal-950">{listing.title}</h3>
-                <p className="text-xs text-teal-950/60 mb-3 font-medium">📍 {listing.location?.city || "Sri Lanka"}{listing.location?.region ? `, ${listing.location.region}` : ""}</p>
+                <p className="text-xs text-teal-950/60 mb-3 font-medium flex items-center gap-1">
+                  <MapPin className="w-3 h-3" /> {listing.location?.city || "Sri Lanka"}{listing.location?.region ? `, ${listing.location.region}` : ""}
+                </p>
                 <p className="text-sm text-teal-950/70 mb-4 line-clamp-2 leading-relaxed">{listing.description}</p>
 
                 <div className="flex items-center justify-between border-t border-teal-900/5 pt-3">
-                  <span className="font-semibold text-teal-900">
-                    {listing.currency} {listing.basePrice} <span className="text-xs font-normal text-teal-950/50">/{listing.priceUnit?.replace("per_", "")}</span>
+                  <span className="font-semibold text-teal-900 ledger">
+                    {listing.currency} {listing.basePrice} <span className="text-xs font-normal text-teal-950/50 font-body">/{listing.priceUnit?.replace("per_", "")}</span>
                   </span>
                   {listing.ratingCount > 0 && (
-                    <span className="text-xs font-medium text-teal-950/70 bg-amber-50 px-2 py-0.5 rounded border border-amber-200/50">
-                      ★ {listing.ratingAverage.toFixed(1)} ({listing.ratingCount})
+                    <span className="text-xs font-medium text-teal-950/70 bg-saffron-100 px-2 py-0.5 rounded-full flex items-center gap-1">
+                      <Star className="w-3 h-3 fill-saffron-600 text-saffron-600" /> {listing.ratingAverage.toFixed(1)} ({listing.ratingCount})
                     </span>
                   )}
                 </div>
@@ -116,18 +132,16 @@ export default function Discover() {
                 onClick={(e) => planTripWithListing(e, listing)}
                 className="w-full bg-teal-50 hover:bg-teal-100/70 text-teal-900 border border-teal-900/15 rounded-xl py-2 text-xs font-semibold flex items-center justify-center gap-1.5 transition"
               >
-                <span>⚡ Plan Trip with this Location</span>
+                <Sparkles className="w-3.5 h-3.5" /> Plan a trip around this
               </button>
             </div>
-          </div>
+          </Card>
         ))}
       </div>
 
       <div className="mt-10 flex flex-col items-start gap-3">
         <p className="text-sm text-teal-950/60 font-medium">
-          {results.length === 0
-            ? "Know a great spot that's missing?"
-            : "Not what you were looking for?"}
+          {results.length === 0 ? "Know a great spot that's missing?" : "Not what you were looking for?"}
         </p>
         <SuggestPlaceForm initialQuery={filters.query} onSubmitted={runSearch} />
       </div>

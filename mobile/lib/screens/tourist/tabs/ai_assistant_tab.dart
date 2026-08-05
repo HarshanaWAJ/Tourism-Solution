@@ -283,7 +283,7 @@ class _AiAssistantTabState extends State<AiAssistantTab> with SingleTickerProvid
                   padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                   constraints: BoxConstraints(maxWidth: MediaQuery.of(context).size.width * 0.78),
                   decoration: BoxDecoration(
-                    color: isUser ? AppColors.primary : const Color(0xFFF1F5F9),
+                    color: isUser ? AppColors.primary : const Color(0xFFEEF6F5),
                     borderRadius: BorderRadius.only(
                       topLeft: const Radius.circular(18),
                       topRight: const Radius.circular(18),
@@ -390,9 +390,9 @@ class _AiAssistantTabState extends State<AiAssistantTab> with SingleTickerProvid
             Container(
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
-                color: const Color(0xFFF0F9F6),
+                color: const Color(0xFFEEF6F5),
                 borderRadius: BorderRadius.circular(16),
-                border: Border.all(color: const Color(0xFFCCFBF1)),
+                border: Border.all(color: const Color(0xFFDCEAE8)),
               ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -418,7 +418,7 @@ class _AiAssistantTabState extends State<AiAssistantTab> with SingleTickerProvid
                           decoration: BoxDecoration(
                             color: Colors.white,
                             borderRadius: BorderRadius.circular(12),
-                            border: Border.all(color: const Color(0xFFE2E8F0)),
+                            border: Border.all(color: const Color(0xFFE2EAE8)),
                           ),
                           child: Column(
                             children: [
@@ -453,9 +453,9 @@ class _AiAssistantTabState extends State<AiAssistantTab> with SingleTickerProvid
                       child: Container(
                         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
                         decoration: BoxDecoration(
-                          color: const Color(0xFFF1F5F9),
+                          color: const Color(0xFFEEF6F5),
                           borderRadius: BorderRadius.circular(14),
-                          border: Border.all(color: const Color(0xFFE2E8F0)),
+                          border: Border.all(color: const Color(0xFFE2EAE8)),
                         ),
                         child: Row(
                           children: [
@@ -482,9 +482,9 @@ class _AiAssistantTabState extends State<AiAssistantTab> with SingleTickerProvid
                     Container(
                       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
                       decoration: BoxDecoration(
-                        color: const Color(0xFFF1F5F9),
+                        color: const Color(0xFFEEF6F5),
                         borderRadius: BorderRadius.circular(14),
-                        border: Border.all(color: const Color(0xFFE2E8F0)),
+                        border: Border.all(color: const Color(0xFFE2EAE8)),
                       ),
                       child: Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -569,9 +569,9 @@ class _AiAssistantTabState extends State<AiAssistantTab> with SingleTickerProvid
                   ? Container(
                       padding: const EdgeInsets.all(16),
                       decoration: BoxDecoration(
-                        color: const Color(0xFFF8FAFC),
+                        color: const Color(0xFFF6F5F0),
                         borderRadius: BorderRadius.circular(16),
-                        border: Border.all(color: const Color(0xFFE2E8F0)),
+                        border: Border.all(color: const Color(0xFFE2EAE8)),
                       ),
                       child: const Center(
                         child: Text(
@@ -590,7 +590,7 @@ class _AiAssistantTabState extends State<AiAssistantTab> with SingleTickerProvid
                           decoration: BoxDecoration(
                             color: Colors.white,
                             borderRadius: BorderRadius.circular(14),
-                            border: Border.all(color: const Color(0xFFE2E8F0)),
+                            border: Border.all(color: const Color(0xFFE2EAE8)),
                           ),
                           child: ListTile(
                             leading: Container(

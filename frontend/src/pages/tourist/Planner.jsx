@@ -1,6 +1,8 @@
 import { useEffect, useState } from "react";
 import { useSearchParams } from "react-router-dom";
+import { Sparkles, MapPin, Car, Eye, Printer, CheckCircle2, Cloud, Send } from "lucide-react";
 import { api } from "../../api/client.js";
+import { Badge, Button, Card, ErrorBanner } from "../../components/ui.jsx";
 
 const INTERESTS = ["culture", "wildlife", "beach", "hiking", "food", "surfing", "family-friendly"];
 
@@ -25,7 +27,6 @@ export default function Planner() {
   const [weatherPreview, setWeatherPreview] = useState(null);
   const [weatherLoading, setWeatherLoading] = useState(false);
 
-  // Available relevant places matching destination city
   const [cityListings, setCityListings] = useState([]);
   const [loadingListings, setLoadingListings] = useState(false);
 
@@ -52,7 +53,6 @@ export default function Planner() {
     loadSavedTrips();
   }, []);
 
-  // Fetch live weather forecast preview on city or dates change
   useEffect(() => {
     let active = true;
     async function fetchPreview() {
@@ -62,11 +62,7 @@ export default function Planner() {
       }
       setWeatherLoading(true);
       try {
-        const res = await api.getWeatherForecast({
-          city: form.city,
-          startDate: form.startDate,
-          endDate: form.endDate,
-        });
+        const res = await api.getWeatherForecast({ city: form.city, startDate: form.startDate, endDate: form.endDate });
         if (active) setWeatherPreview(res.forecasts || []);
       } catch {
         if (active) setWeatherPreview(null);
@@ -78,7 +74,6 @@ export default function Planner() {
     return () => { active = false; };
   }, [form.city, form.startDate, form.endDate]);
 
-  // Fetch relevant matching places when city changes
   useEffect(() => {
     let active = true;
     async function fetchCityPlaces() {
@@ -89,9 +84,7 @@ export default function Planner() {
       setLoadingListings(true);
       try {
         const res = await api.searchListings({ city: form.city });
-        if (active) {
-          setCityListings(res.results || []);
-        }
+        if (active) setCityListings(res.results || []);
       } catch {
         if (active) setCityListings([]);
       } finally {
@@ -136,21 +129,13 @@ export default function Planner() {
   }
 
   function toggleInterest(i) {
-    setForm((f) => ({
-      ...f,
-      interests: f.interests.includes(i) ? f.interests.filter((x) => x !== i) : [...f.interests, i],
-    }));
+    setForm((f) => ({ ...f, interests: f.interests.includes(i) ? f.interests.filter((x) => x !== i) : [...f.interests, i] }));
   }
 
   function togglePlaceSelection(listingId) {
     setForm((f) => {
       const exists = f.selectedListingIds.includes(listingId);
-      return {
-        ...f,
-        selectedListingIds: exists
-          ? f.selectedListingIds.filter((id) => id !== listingId)
-          : [...f.selectedListingIds, listingId],
-      };
+      return { ...f, selectedListingIds: exists ? f.selectedListingIds.filter((id) => id !== listingId) : [...f.selectedListingIds, listingId] };
     });
   }
 
@@ -279,31 +264,24 @@ export default function Planner() {
     <div className="max-w-6xl mx-auto px-6 py-12 grid lg:grid-cols-12 gap-10">
       <div className="lg:col-span-7 space-y-6">
         <div>
-          <h1 className="font-display text-3xl font-semibold mb-2">Smart AI Trip Planner</h1>
-          <p className="text-teal-950/60">
-            Select your target city and preferred locations to automatically sequence a weather-optimized trip plan.
-          </p>
+          <h1 className="font-display text-3xl font-semibold mb-2 flex items-center gap-2"><Sparkles className="w-6 h-6 text-saffron-500" /> AI trip planner</h1>
+          <p className="text-teal-950/60">Select your target city and preferred locations to automatically sequence a weather-optimized trip plan.</p>
         </div>
 
-        <form onSubmit={generate} className="bg-teal-50 rounded-2xl p-6 space-y-4 border border-teal-900/10">
+        <Card as="form" onSubmit={generate} className="bg-teal-50 border-teal-900/8 shadow-none p-6 space-y-4">
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="text-sm font-medium text-teal-900">Destination City / Region</label>
+              <label className="text-sm font-medium text-teal-900">Destination city / region</label>
               <input
-                type="text"
-                placeholder="e.g. Kandy, Ella, Galle, Colombo"
-                value={form.city}
-                onChange={(e) => setForm({ ...form, city: e.target.value })}
+                type="text" placeholder="e.g. Kandy, Ella, Galle, Colombo"
+                value={form.city} onChange={(e) => setForm({ ...form, city: e.target.value })}
                 className="mt-1 w-full rounded-xl border border-teal-900/15 px-3 py-2 text-sm bg-white"
               />
             </div>
             <div>
               <label className="text-sm font-medium text-teal-900">Budget level</label>
-              <select
-                value={form.budgetLevel}
-                onChange={(e) => setForm({ ...form, budgetLevel: e.target.value })}
-                className="mt-1 w-full rounded-xl border border-teal-900/15 px-3 py-2 text-sm bg-white"
-              >
+              <select value={form.budgetLevel} onChange={(e) => setForm({ ...form, budgetLevel: e.target.value })}
+                className="mt-1 w-full rounded-xl border border-teal-900/15 px-3 py-2 text-sm bg-white">
                 <option value="budget">Budget</option>
                 <option value="mid">Mid-range</option>
                 <option value="luxury">Luxury</option>
@@ -314,32 +292,21 @@ export default function Planner() {
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label className="text-sm font-medium text-teal-900">Start date</label>
-              <input
-                type="date"
-                required
-                value={form.startDate}
-                onChange={(e) => setForm({ ...form, startDate: e.target.value })}
-                className="mt-1 w-full rounded-xl border border-teal-900/15 px-3 py-2 text-sm bg-white"
-              />
+              <input type="date" required value={form.startDate} onChange={(e) => setForm({ ...form, startDate: e.target.value })}
+                className="mt-1 w-full rounded-xl border border-teal-900/15 px-3 py-2 text-sm bg-white" />
             </div>
             <div>
               <label className="text-sm font-medium text-teal-900">End date</label>
-              <input
-                type="date"
-                required
-                value={form.endDate}
-                onChange={(e) => setForm({ ...form, endDate: e.target.value })}
-                className="mt-1 w-full rounded-xl border border-teal-900/15 px-3 py-2 text-sm bg-white"
-              />
+              <input type="date" required value={form.endDate} onChange={(e) => setForm({ ...form, endDate: e.target.value })}
+                className="mt-1 w-full rounded-xl border border-teal-900/15 px-3 py-2 text-sm bg-white" />
             </div>
           </div>
 
-          {/* Relevant Places Selection */}
           {form.city && (
             <div className="bg-white rounded-xl p-4 border border-teal-900/10 space-y-2">
               <div className="flex items-center justify-between">
-                <label className="text-xs font-semibold text-teal-900 uppercase tracking-wider">
-                  📍 Relevant Places in {form.city} ({cityListings.length} found)
+                <label className="text-xs font-semibold text-teal-900 uppercase tracking-wider flex items-center gap-1.5">
+                  <MapPin className="w-3.5 h-3.5" /> Relevant places in {form.city} ({cityListings.length})
                 </label>
                 {loadingListings && <span className="text-xs text-teal-950/40">Loading places…</span>}
               </div>
@@ -353,42 +320,30 @@ export default function Planner() {
                         key={listing._id}
                         onClick={() => togglePlaceSelection(listing._id)}
                         className={`p-2.5 rounded-lg border text-xs cursor-pointer flex items-center justify-between transition ${
-                          isSelected
-                            ? "bg-teal-900 text-sand-50 border-teal-900 font-medium"
-                            : "bg-teal-50/50 border-teal-900/10 text-teal-950 hover:bg-teal-100/50"
+                          isSelected ? "bg-teal-900 text-sand-50 border-teal-900 font-medium" : "bg-teal-50/50 border-teal-900/10 text-teal-950 hover:bg-teal-100/50"
                         }`}
                       >
                         <div className="truncate pr-2">
                           <div className="font-semibold truncate">{listing.title}</div>
                           <div className={`text-[10px] capitalize ${isSelected ? "text-sand-200" : "text-teal-950/60"}`}>
-                            {listing.category} • {listing.location?.city}
+                            {listing.category} · {listing.location?.city}
                           </div>
                         </div>
-                        <input
-                          type="checkbox"
-                          checked={isSelected}
-                          onChange={() => {}}
-                          className="h-4 w-4 accent-saffron-500 rounded cursor-pointer"
-                        />
+                        <input type="checkbox" checked={isSelected} onChange={() => {}} className="h-4 w-4 accent-saffron-500 rounded cursor-pointer" />
                       </div>
                     );
                   })}
                 </div>
               ) : (
-                !loadingListings && (
-                  <p className="text-xs text-teal-950/50">
-                    Enter a destination city to view and pick specific places for your itinerary.
-                  </p>
-                )
+                !loadingListings && <p className="text-xs text-teal-950/50">Enter a destination city to view and pick specific places for your itinerary.</p>
               )}
             </div>
           )}
 
-          {/* Live Weather Forecast Preview */}
           {form.city && (
             <div className="bg-white rounded-xl p-3.5 border border-teal-900/10 text-xs">
               <div className="flex justify-between items-center mb-2 font-semibold text-teal-900">
-                <span>🌤️ Multi-Day Weather Forecast ({form.city})</span>
+                <span className="flex items-center gap-1.5"><Cloud className="w-3.5 h-3.5" /> Multi-day weather forecast ({form.city})</span>
                 {weatherLoading && <span className="text-teal-950/40 font-normal">Loading weather…</span>}
               </div>
               {weatherPreview && weatherPreview.length > 0 ? (
@@ -413,9 +368,7 @@ export default function Planner() {
             <div className="flex flex-wrap gap-2">
               {INTERESTS.map((i) => (
                 <button
-                  type="button"
-                  key={i}
-                  onClick={() => toggleInterest(i)}
+                  type="button" key={i} onClick={() => toggleInterest(i)}
                   className={`text-xs px-3 py-1.5 rounded-full border capitalize transition ${
                     form.interests.includes(i) ? "bg-teal-900 text-sand-50 border-teal-900 font-medium" : "border-teal-900/20 text-teal-900 hover:bg-teal-100/50"
                   }`}
@@ -426,49 +379,36 @@ export default function Planner() {
             </div>
           </div>
 
-          {error && <p className="text-sm text-red-600 font-medium">{error}</p>}
+          <ErrorBanner>{error}</ErrorBanner>
 
-          <button
-            disabled={busy}
-            className="w-full bg-saffron-500 text-teal-950 rounded-full py-3.5 font-semibold hover:bg-saffron-400 transition disabled:opacity-60 shadow-sm"
-          >
-            {busy ? "Filtering Relevant Places & Sequencing Routes…" : "⚡ Generate Relevant Weather & Route Plan"}
-          </button>
-        </form>
+          <Button disabled={busy} className="w-full" size="lg">
+            <Sparkles className="w-4 h-4" /> {busy ? "Sequencing routes & weather…" : "Generate weather & route plan"}
+          </Button>
+        </Card>
 
-        {/* Detailed Itinerary Display View */}
         {itinerary && (
-          <div className="border border-teal-900/10 rounded-2xl p-6 bg-white shadow-sm space-y-6">
+          <Card className="p-6 space-y-6">
             <div className="flex items-center justify-between border-b border-teal-900/10 pb-4 flex-wrap gap-2">
               <div>
                 <div className="flex items-center gap-2">
                   <h3 className="font-display text-2xl font-semibold text-teal-950">{itinerary.title}</h3>
-                  {itinerary.status === "confirmed" && (
-                    <span className="text-xs bg-teal-100 text-teal-900 font-semibold px-2.5 py-0.5 rounded-full border border-teal-200">
-                      ✓ Saved Trip Details
-                    </span>
-                  )}
+                  {itinerary.status === "confirmed" && <Badge tone="tealSoft"><CheckCircle2 className="w-3 h-3" /> Saved</Badge>}
                 </div>
                 <p className="text-xs text-teal-950/60 mt-1 font-medium">
-                  📅 {new Date(itinerary.startDate).toLocaleDateString()} – {new Date(itinerary.endDate).toLocaleDateString()} • ({itinerary.items?.length || 0} scheduled stops)
+                  {new Date(itinerary.startDate).toLocaleDateString()} – {new Date(itinerary.endDate).toLocaleDateString()} · {itinerary.items?.length || 0} scheduled stops
                 </p>
               </div>
-              <span
-                className={`text-xs font-semibold px-3 py-1 rounded-full ${
-                  itinerary.status === "confirmed" ? "bg-teal-800 text-sand-50" : "bg-saffron-100 text-saffron-700"
-                }`}
-              >
-                {itinerary.status === "confirmed" ? "Saved Itinerary" : "Draft — Review & Save"}
-              </span>
+              <Badge tone={itinerary.status === "confirmed" ? "teal" : "saffronSoft"}>
+                {itinerary.status === "confirmed" ? "Saved itinerary" : "Draft — review & save"}
+              </Badge>
             </div>
 
-            {/* Daily Weather Summary Banners */}
             {Array.from(new Set(itinerary.items.map((i) => i.day))).map((day) => {
               const dayItems = itinerary.items.filter((i) => i.day === day);
               const dayWeather = (itinerary.dailyWeather || []).find((w) => w.day === day) || dayItems[0]?.weather;
 
               return (
-                <div key={day} className="rounded-xl border border-teal-900/10 overflow-hidden bg-slate-50/50">
+                <div key={day} className="rounded-xl border border-teal-900/10 overflow-hidden bg-sand-100/50">
                   <div className="bg-teal-900/5 px-4 py-3 border-b border-teal-900/10 flex items-center justify-between flex-wrap gap-2">
                     <div className="flex items-center gap-2">
                       <span className="text-xs uppercase tracking-widest text-saffron-600 font-bold">Day {day}</span>
@@ -481,9 +421,7 @@ export default function Planner() {
                       )}
                     </div>
                     {dayWeather?.recommendation && (
-                      <span className="text-[11px] bg-white text-teal-900 border border-teal-900/10 px-2.5 py-1 rounded-full font-medium">
-                        {dayWeather.recommendation}
-                      </span>
+                      <span className="text-[11px] bg-white text-teal-900 border border-teal-900/10 px-2.5 py-1 rounded-full font-medium">{dayWeather.recommendation}</span>
                     )}
                   </div>
 
@@ -491,25 +429,21 @@ export default function Planner() {
                     {dayItems.map((item, idx) => (
                       <div key={idx} className="space-y-3">
                         {item.travelFromPrevious && item.travelFromPrevious.durationSeconds > 0 && (
-                          <div className="flex items-center gap-2 text-xs text-teal-900/70 bg-amber-50/70 px-3 py-1.5 rounded-lg border border-amber-200/50 w-fit">
-                            <span>🚗</span>
-                            <span className="font-semibold text-amber-900">Estimated Travel:</span>
+                          <div className="flex items-center gap-2 text-xs text-teal-900/70 bg-saffron-100/70 px-3 py-1.5 rounded-lg border border-saffron-500/20 w-fit">
+                            <Car className="w-3.5 h-3.5 text-saffron-700" />
+                            <span className="font-semibold text-saffron-700">Estimated travel:</span>
                             <span>{item.travelFromPrevious.durationText}</span>
-                            <span className="text-amber-700/60">({item.travelFromPrevious.distanceText})</span>
+                            <span className="text-saffron-700/60">({item.travelFromPrevious.distanceText})</span>
                           </div>
                         )}
 
-                        <div className="bg-white p-4 rounded-xl border border-teal-900/10 flex items-start justify-between gap-3 shadow-2xs">
+                        <div className="bg-white p-4 rounded-xl border border-teal-900/10 flex items-start justify-between gap-3">
                           <div className="space-y-1 flex-1">
                             <div className="flex items-center gap-2 flex-wrap">
-                              <span className="text-xs font-semibold text-teal-800 bg-teal-50 px-2.5 py-0.5 rounded border border-teal-900/10">
-                                {item.startTime || "Morning"}
-                              </span>
+                              <span className="text-xs font-semibold text-teal-800 bg-teal-50 px-2.5 py-0.5 rounded border border-teal-900/10 ledger">{item.startTime || "Morning"}</span>
                               <h4 className="font-semibold text-teal-950 text-base">{item.title}</h4>
                             </div>
-                            {item.locationName && (
-                              <p className="text-xs font-medium text-teal-900/70">📍 Location: {item.locationName}</p>
-                            )}
+                            {item.locationName && <p className="text-xs font-medium text-teal-900/70 flex items-center gap-1"><MapPin className="w-3 h-3" /> {item.locationName}</p>}
                             <p className="text-xs text-teal-950/70 leading-relaxed pt-1">{item.notes}</p>
 
                             {item.weather?.recommendation && (
@@ -521,11 +455,7 @@ export default function Planner() {
                           </div>
 
                           {itinerary.status !== "confirmed" && (
-                            <button
-                              type="button"
-                              onClick={() => removeItem(itinerary.items.indexOf(item))}
-                              className="text-xs text-red-500 hover:text-red-700 hover:underline shrink-0 pt-1 font-medium"
-                            >
+                            <button type="button" onClick={() => removeItem(itinerary.items.indexOf(item))} className="text-xs text-ruby-600 hover:text-ruby-700 hover:underline shrink-0 pt-1 font-medium">
                               Remove
                             </button>
                           )}
@@ -539,100 +469,70 @@ export default function Planner() {
 
             {itinerary.status !== "confirmed" ? (
               <div className="flex gap-3 pt-4 border-t border-teal-900/10">
-                <button
-                  onClick={acceptItinerary}
-                  disabled={savingBusy || itinerary.items.length === 0}
-                  className="flex-1 bg-teal-900 text-sand-50 rounded-full py-3 text-sm font-semibold hover:bg-teal-800 transition disabled:opacity-60 shadow-sm"
-                >
-                  {savingBusy ? "Saving Trip…" : "Confirm & Save Itinerary to My Trips"}
-                </button>
-                <button
-                  onClick={discardItinerary}
-                  className="text-sm text-teal-900/60 px-5 py-3 hover:text-teal-900 font-medium"
-                >
-                  Discard Draft
-                </button>
+                <Button onClick={acceptItinerary} disabled={savingBusy || itinerary.items.length === 0} variant="dark" size="lg" className="flex-1">
+                  {savingBusy ? "Saving trip…" : "Confirm & save to My Trips"}
+                </Button>
+                <Button onClick={discardItinerary} variant="ghost">Discard draft</Button>
               </div>
             ) : (
               <div className="flex items-center justify-between pt-3 border-t border-teal-900/10">
-                <p className="text-xs text-teal-950/60 font-medium">
-                  ✓ Saved to My Trips. You can view, print, or generate another plan anytime.
-                </p>
-                <button
-                  onClick={printItinerary}
-                  className="text-xs bg-teal-50 text-teal-900 hover:bg-teal-100 border border-teal-900/15 px-3 py-1.5 rounded-lg font-semibold transition"
-                >
-                  🖨️ Print / Export Trip
-                </button>
+                <p className="text-xs text-teal-950/60 font-medium flex items-center gap-1.5"><CheckCircle2 className="w-3.5 h-3.5 text-teal-700" /> Saved to My Trips. View, print, or generate another plan anytime.</p>
+                <Button onClick={printItinerary} size="sm"><Printer className="w-3.5 h-3.5" /> Print / export</Button>
               </div>
             )}
-          </div>
+          </Card>
         )}
 
-        {/* Saved Trips Detailed Viewer & List */}
         {savedTrips.length > 0 && (
-          <div className="space-y-3 bg-white p-5 rounded-2xl border border-teal-900/10 shadow-xs">
+          <Card className="p-5 space-y-3">
             <h3 className="font-display text-lg font-semibold text-teal-950 flex items-center justify-between">
-              <span>Your Saved Trips ({savedTrips.length})</span>
-              <span className="text-xs text-teal-950/50 font-normal font-sans">Click any trip to view full details</span>
+              <span>Your saved trips ({savedTrips.length})</span>
+              <span className="text-xs text-teal-950/50 font-normal font-body">Click any trip to view full details</span>
             </h3>
             <ul className="space-y-2.5">
               {savedTrips.map((t) => {
                 const isCurrent = selectedTripId === t._id;
                 return (
                   <li
-                    key={t._id}
-                    onClick={() => viewSavedTripDetails(t)}
+                    key={t._id} onClick={() => viewSavedTripDetails(t)}
                     className={`text-sm border rounded-xl p-3.5 flex justify-between items-center cursor-pointer transition ${
-                      isCurrent
-                        ? "bg-teal-900 text-sand-50 border-teal-900 shadow-sm"
-                        : "bg-teal-50/40 border-teal-900/10 text-teal-950 hover:bg-teal-100/50"
+                      isCurrent ? "bg-teal-900 text-sand-50 border-teal-900" : "bg-teal-50/40 border-teal-900/10 text-teal-950 hover:bg-teal-100/50"
                     }`}
                   >
                     <div>
                       <div className="font-semibold text-base flex items-center gap-2">
                         <span>{t.title}</span>
-                        {isCurrent && <span className="text-[10px] bg-sand-200 text-teal-950 px-2 py-0.5 rounded-full font-bold">Viewing Now</span>}
+                        {isCurrent && <Badge tone="saffronSoft">Viewing now</Badge>}
                       </div>
-                      <div className={`text-xs mt-0.5 ${isCurrent ? "text-sand-200" : "text-teal-950/60"}`}>
-                        📅 {new Date(t.startDate).toLocaleDateString()} – {new Date(t.endDate).toLocaleDateString()} • {t.items?.length || 0} scheduled stops
+                      <div className={`text-xs mt-0.5 ${isCurrent ? "text-sand-100/80" : "text-teal-950/60"}`}>
+                        {new Date(t.startDate).toLocaleDateString()} – {new Date(t.endDate).toLocaleDateString()} · {t.items?.length || 0} scheduled stops
                       </div>
                     </div>
                     <button
                       type="button"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        viewSavedTripDetails(t);
-                      }}
-                      className={`text-xs px-3.5 py-1.5 rounded-lg font-semibold border transition shrink-0 ${
-                        isCurrent
-                          ? "bg-saffron-500 text-teal-950 border-saffron-400"
-                          : "bg-white text-teal-900 border-teal-900/20 hover:bg-teal-900 hover:text-sand-50"
+                      onClick={(e) => { e.stopPropagation(); viewSavedTripDetails(t); }}
+                      className={`text-xs px-3.5 py-1.5 rounded-lg font-semibold border transition shrink-0 flex items-center gap-1.5 ${
+                        isCurrent ? "bg-saffron-500 text-teal-950 border-saffron-400" : "bg-white text-teal-900 border-teal-900/20 hover:bg-teal-900 hover:text-sand-50"
                       }`}
                     >
-                      👁️ View Details
+                      <Eye className="w-3.5 h-3.5" /> View details
                     </button>
                   </li>
                 );
               })}
             </ul>
-          </div>
+          </Card>
         )}
       </div>
 
-      <div className="lg:col-span-5 flex flex-col border border-teal-900/10 rounded-2xl bg-white overflow-hidden h-[620px] shadow-sm">
+      <div className="lg:col-span-5 flex flex-col rounded-2xl bg-white overflow-hidden h-[620px] shadow-card sticky top-24">
         <div className="bg-teal-900 text-sand-50 px-5 py-3.5 font-display text-lg flex items-center justify-between">
-          <span>AI Travel Assistant</span>
-          <span className="text-xs font-sans font-normal opacity-70">Multilingual</span>
+          <span>AI travel assistant</span>
+          <span className="text-xs font-body font-normal opacity-70">Multilingual</span>
         </div>
         <div className="flex-1 overflow-y-auto p-5 space-y-3 bg-teal-50/20">
           {chatLog.map((m, idx) => (
-            <div
-              key={idx}
-              className={`max-w-[88%] rounded-2xl px-4 py-2.5 text-sm leading-relaxed ${
-                m.from === "user" ? "ml-auto bg-teal-900 text-sand-50" : "bg-white border border-teal-900/10 text-teal-950 shadow-2xs"
-              }`}
-            >
+            <div key={idx} className={`max-w-[88%] rounded-2xl px-4 py-2.5 text-sm leading-relaxed ${m.from === "user" ? "ml-auto bg-teal-900 text-sand-50" : "bg-white border border-teal-900/10 text-teal-950"}`}>
               {m.text}
             </div>
           ))}
@@ -640,13 +540,12 @@ export default function Planner() {
         </div>
         <form onSubmit={sendChat} className="p-3 border-t border-teal-900/10 flex gap-2 bg-white">
           <input
-            value={chatInput}
-            onChange={(e) => setChatInput(e.target.value)}
+            value={chatInput} onChange={(e) => setChatInput(e.target.value)}
             placeholder="Ask about visas, weather, transport…"
-            className="flex-1 rounded-full border border-teal-900/15 px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-teal-700"
+            className="flex-1 rounded-full border border-teal-900/15 px-4 py-2 text-sm focus:outline-none focus:border-teal-700"
           />
-          <button className="bg-teal-900 text-sand-50 rounded-full px-5 text-sm font-medium hover:bg-teal-800 transition">
-            Send
+          <button className="bg-teal-900 text-sand-50 rounded-full px-4 text-sm font-medium hover:bg-teal-800 transition flex items-center gap-1.5">
+            <Send className="w-3.5 h-3.5" /> Send
           </button>
         </form>
       </div>

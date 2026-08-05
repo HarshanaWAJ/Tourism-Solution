@@ -235,7 +235,7 @@ class _SupportTabState extends State<SupportTab> {
                     ? Container(
                         padding: const EdgeInsets.all(20),
                         decoration: BoxDecoration(
-                          color: const Color(0xFFF1F5F9),
+                          color: const Color(0xFFEEF6F5),
                           borderRadius: BorderRadius.circular(16),
                         ),
                         child: const Text(
@@ -257,7 +257,7 @@ class _SupportTabState extends State<SupportTab> {
                             decoration: BoxDecoration(
                               color: Colors.white,
                               borderRadius: BorderRadius.circular(16),
-                              border: Border.all(color: const Color(0xFFE2E8F0)),
+                              border: Border.all(color: const Color(0xFFE2EAE8)),
                             ),
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
@@ -319,15 +319,15 @@ class _TicketStatusPill extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    Color bg = const Color(0xFFFEF3C7);
-    Color text = const Color(0xFFD97706);
+    Color bg = const Color(0xFFFBEFD4);
+    Color text = const Color(0xFF9C6512);
 
     if (status == 'closed') {
       bg = AppColors.successBg;
       text = AppColors.successText;
     } else if (status == 'in_progress') {
-      bg = const Color(0xFFE0F2FE);
-      text = const Color(0xFF0284C7);
+      bg = const Color(0xFFDCEAE8);
+      text = const Color(0xFF114B4B);
     }
 
     return Container(

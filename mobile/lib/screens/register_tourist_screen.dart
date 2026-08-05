@@ -78,13 +78,13 @@ class _RegisterTouristScreenState extends State<RegisterTouristScreen> {
                 child: Container(
                   padding: const EdgeInsets.all(14),
                   decoration: BoxDecoration(
-                    color: const Color(0xFF0D9488).withOpacity(0.12),
+                    color: const Color(0xFF1C7A7A).withOpacity(0.12),
                     borderRadius: BorderRadius.circular(16),
                   ),
                   child: const Icon(
                     Icons.explore_rounded,
                     size: 32,
-                    color: Color(0xFF0D9488),
+                    color: Color(0xFF1C7A7A),
                   ),
                 ),
               ),

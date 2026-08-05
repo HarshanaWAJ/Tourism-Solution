@@ -2,8 +2,10 @@ import { useEffect, useRef, useState } from "react";
 import { MapContainer, TileLayer, Marker, Popup } from "react-leaflet";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
+import { MapPin } from "lucide-react";
 import { api } from "../../api/client.js";
 import { getSocket } from "../../api/socket.js";
+import { Spinner, Badge } from "../../components/ui.jsx";
 
 const TABS = ["Live map", "Drivers", "Verification", "Rides", "Fare Config"];
 
@@ -132,13 +134,13 @@ function DriverList() {
     }
   }
 
-  if (!drivers) return <p className="text-teal-950/50">Loading…</p>;
+  if (!drivers) return <Spinner />;
   if (drivers.length === 0) return <p className="text-teal-950/50">No drivers have registered yet.</p>;
 
   return (
     <div className="space-y-3">
       {drivers.map((d) => (
-        <div key={d._id} className="border border-teal-900/10 rounded-xl p-4 flex items-center justify-between bg-white gap-4">
+        <div key={d._id} className="border border-teal-900/10 rounded-xl p-4 flex items-center justify-between bg-white shadow-card gap-4">
           <div>
             <div className="flex items-center gap-2">
               <p className="font-medium">{d.owner?.name}</p>
@@ -151,7 +153,7 @@ function DriverList() {
                 <span className="text-[10px] uppercase tracking-wide px-2 py-0.5 rounded-full bg-teal-800 text-sand-50">online</span>
               )}
               {d.isSuspended && (
-                <span className="text-[10px] uppercase tracking-wide px-2 py-0.5 rounded-full bg-red-100 text-red-600">suspended</span>
+                <span className="text-[10px] uppercase tracking-wide px-2 py-0.5 rounded-full bg-ruby-100 text-ruby-700">suspended</span>
               )}
             </div>
             <p className="text-sm text-teal-950/60 capitalize">
@@ -184,7 +186,7 @@ function DriverVerification() {
     refresh();
   }
 
-  if (!queue) return <p className="text-teal-950/50">Loading…</p>;
+  if (!queue) return <Spinner />;
   if (queue.documents.length === 0) return <p className="text-teal-950/50">No pending driver verification documents.</p>;
 
   return (
@@ -192,7 +194,7 @@ function DriverVerification() {
       {queue.documents.map((doc) => {
         const driver = queue.drivers.find((d) => d._id === doc.driver);
         return (
-          <div key={doc._id} className="border border-teal-900/10 rounded-2xl p-5 bg-white flex items-center justify-between">
+          <div key={doc._id} className="border border-teal-900/10 rounded-2xl p-5 bg-white shadow-card flex items-center justify-between">
             <div>
               <p className="font-medium">{driver?.owner?.name || "Driver"}</p>
               <p className="text-sm text-teal-950/60 capitalize">
@@ -220,12 +222,12 @@ function DriverVerification() {
 
 const RIDE_STATUS_COLORS = {
   searching: "bg-saffron-100 text-saffron-600",
-  no_drivers_available: "bg-red-100 text-red-600",
+  no_drivers_available: "bg-ruby-100 text-ruby-700",
   accepted: "bg-teal-50 text-teal-700",
   arriving: "bg-teal-50 text-teal-700",
   in_progress: "bg-teal-800 text-sand-50",
   completed: "bg-teal-50 text-teal-900",
-  cancelled: "bg-red-100 text-red-600",
+  cancelled: "bg-ruby-100 text-ruby-700",
 };
 
 function RidesMonitor() {
@@ -251,20 +253,19 @@ function RidesMonitor() {
         </select>
       </div>
 
-      {!rides && <p className="text-teal-950/50">Loading…</p>}
+      {!rides && <Spinner />}
       {rides && rides.length === 0 && <p className="text-teal-950/50">No rides match this filter.</p>}
 
       <div className="space-y-3">
         {rides?.map((r) => (
-          <div key={r._id} className="border border-teal-900/10 rounded-xl p-4 flex items-center justify-between bg-white gap-4">
+          <div key={r._id} className="border border-teal-900/10 rounded-xl p-4 flex items-center justify-between bg-white shadow-card gap-4">
             <div className="min-w-0">
               <p className="font-medium truncate">
                 {r.pickup?.label || `${r.pickup?.lat?.toFixed(3)}, ${r.pickup?.lng?.toFixed(3)}`} →{" "}
                 {r.destination?.label || `${r.destination?.lat?.toFixed(3)}, ${r.destination?.lng?.toFixed(3)}`}
               </p>
               <p className="text-sm text-teal-950/60">
-                {r.tourist?.name} {r.driver?.owner?.name ? `· driver ${r.driver.owner.name}` : ""} · {r.currency}{" "}
-                {r.fareFinal ?? r.fareEstimate} · <span className="capitalize">{r.paymentMode}</span> (
+                {r.tourist?.name} {r.driver?.owner?.name ? `· driver ${r.driver.owner.name}` : ""} · <span className="ledger">{r.currency} {r.fareFinal ?? r.fareEstimate}</span> · <span className="capitalize">{r.paymentMode}</span> (
                 <span className="capitalize">{r.paymentStatus}</span>)
               </p>
             </div>
@@ -369,7 +370,7 @@ function FareConfigPanel() {
     setMsg(null);
   }
 
-  if (!configs) return <p className="text-teal-950/50">Loading fare configuration…</p>;
+  if (!configs) return <Spinner label="Loading fare configuration…" />;
 
   const preview = previewFare();
 
@@ -403,7 +404,7 @@ function FareConfigPanel() {
 
       <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
         {/* ---- Form ---- */}
-        <form onSubmit={save} className="lg:col-span-3 bg-white border border-teal-900/10 rounded-2xl p-6 space-y-5">
+        <form onSubmit={save} className="lg:col-span-3 bg-white border border-teal-900/10 rounded-2xl p-6 space-y-5 shadow-card">
           <h3 className="font-semibold text-teal-950">{VEHICLE_META[selected]?.label} — Pricing Rules</h3>
 
           {/* Pricing model explanation */}
@@ -506,7 +507,7 @@ function FareConfigPanel() {
           {/* Feedback message */}
           {msg && (
             <div className={`text-sm rounded-xl px-4 py-3 ${
-              msg.type === "success" ? "bg-teal-50 text-teal-800" : "bg-red-50 text-red-700"
+              msg.type === "success" ? "bg-teal-50 text-teal-800" : "bg-ruby-100 text-ruby-700"
             }`}>
               {msg.text}
             </div>
@@ -533,7 +534,7 @@ function FareConfigPanel() {
 
         {/* ---- Live Preview ---- */}
         <div className="lg:col-span-2 space-y-4">
-          <div className="bg-white border border-teal-900/10 rounded-2xl p-6">
+          <div className="bg-white border border-teal-900/10 rounded-2xl p-6 shadow-card">
             <h3 className="font-semibold text-teal-950 mb-4">Live Fare Preview</h3>
             <div className="space-y-4">
               <div>
@@ -580,7 +581,7 @@ function FareConfigPanel() {
           </div>
 
           {/* Summary table of all vehicles */}
-          <div className="bg-white border border-teal-900/10 rounded-2xl p-5">
+          <div className="bg-white border border-teal-900/10 rounded-2xl p-5 shadow-card">
             <h4 className="text-sm font-semibold text-teal-950 mb-3">All Vehicle Rates</h4>
             <table className="w-full text-xs text-teal-950/70">
               <thead>

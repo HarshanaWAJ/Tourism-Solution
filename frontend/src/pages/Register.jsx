@@ -1,25 +1,40 @@
 import { useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
+import { Check } from "lucide-react";
 import { api } from "../api/client.js";
 import { useAuth } from "../context/AuthContext.jsx";
+import { Button, Input, ErrorBanner } from "../components/ui.jsx";
+import SocialLoginRow from "../components/SocialLoginRow.jsx";
 
 const CATEGORIES = ["hotel", "guide", "transport", "restaurant", "activity", "attraction"];
+const LANGUAGES = ["English", "Sinhala", "Tamil", "German", "French", "Chinese", "Japanese", "Russian"];
+const INTERESTS = ["Beaches", "Wildlife", "Culture & temples", "Hiking", "Food", "Surfing", "Tea country", "Wellness"];
 
 export default function Register() {
   const [mode, setMode] = useState("tourist");
-  const [form, setForm] = useState({ name: "", email: "", password: "", businessName: "", category: "hotel" });
+  const [form, setForm] = useState({
+    name: "", email: "", password: "",
+    businessName: "", category: "hotel",
+    preferredLanguage: "English", nationality: "", interests: [],
+  });
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
   const { loginWithResult } = useAuth();
   const navigate = useNavigate();
+
+  function toggleInterest(i) {
+    setForm((f) => ({
+      ...f,
+      interests: f.interests.includes(i) ? f.interests.filter((x) => x !== i) : [...f.interests, i],
+    }));
+  }
 
   async function handleSubmit(e) {
     e.preventDefault();
     setError("");
     setBusy(true);
     try {
-      const result =
-        mode === "tourist" ? await api.registerTourist(form) : await api.registerVendor(form);
+      const result = mode === "tourist" ? await api.registerTourist(form) : await api.registerVendor(form);
       loginWithResult(result);
       navigate(mode === "tourist" ? "/discover" : "/vendor");
     } catch (err) {
@@ -30,7 +45,7 @@ export default function Register() {
   }
 
   return (
-    <div className="max-w-md mx-auto px-6 py-20">
+    <div className="max-w-md mx-auto px-6 py-16">
       <h1 className="font-display text-3xl font-semibold mb-2">Join Ceylon Way</h1>
       <p className="text-teal-950/60 mb-6">Plan a trip, or list your business.</p>
 
@@ -48,51 +63,80 @@ export default function Register() {
         ))}
       </div>
 
+      <SocialLoginRow />
+
       <form onSubmit={handleSubmit} className="space-y-4">
-        <div>
-          <label className="text-sm font-medium text-teal-900">Full name</label>
-          <input required value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })}
-            className="mt-1 w-full rounded-xl border border-teal-900/15 px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-teal-700" />
-        </div>
-        <div>
-          <label className="text-sm font-medium text-teal-900">Email</label>
-          <input type="email" required value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })}
-            className="mt-1 w-full rounded-xl border border-teal-900/15 px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-teal-700" />
-        </div>
-        <div>
-          <label className="text-sm font-medium text-teal-900">Password</label>
-          <input type="password" required minLength={8} value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })}
-            className="mt-1 w-full rounded-xl border border-teal-900/15 px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-teal-700" />
-        </div>
+        <Input label="Full name" required value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} />
+        <Input label="Email" type="email" required value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} />
+        <Input label="Password" type="password" required minLength={8} hint="At least 8 characters." value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} />
+
+        {mode === "tourist" && (
+          <>
+            <div className="grid grid-cols-2 gap-3">
+              <label className="block">
+                <span className="text-sm font-medium text-teal-900 block mb-1.5">Preferred language</span>
+                <select
+                  value={form.preferredLanguage}
+                  onChange={(e) => setForm({ ...form, preferredLanguage: e.target.value })}
+                  className="w-full rounded-xl border border-teal-900/15 px-4 py-2.5 text-sm bg-white"
+                >
+                  {LANGUAGES.map((l) => <option key={l} value={l}>{l}</option>)}
+                </select>
+              </label>
+              <Input label="Nationality" placeholder="e.g. German" value={form.nationality} onChange={(e) => setForm({ ...form, nationality: e.target.value })} />
+            </div>
+
+            <div>
+              <span className="text-sm font-medium text-teal-900 block mb-1.5">Travel interests</span>
+              <div className="flex flex-wrap gap-2">
+                {INTERESTS.map((i) => {
+                  const active = form.interests.includes(i);
+                  return (
+                    <button
+                      type="button"
+                      key={i}
+                      onClick={() => toggleInterest(i)}
+                      className={`inline-flex items-center gap-1 text-xs font-medium px-3 py-1.5 rounded-full border transition ${
+                        active ? "bg-teal-900 text-sand-50 border-teal-900" : "border-teal-900/15 text-teal-900/70 hover:bg-teal-50"
+                      }`}
+                    >
+                      {active && <Check className="w-3 h-3" />} {i}
+                    </button>
+                  );
+                })}
+              </div>
+              <p className="text-xs text-teal-950/45 mt-1.5">Used to tailor your AI trip planner recommendations.</p>
+            </div>
+          </>
+        )}
 
         {mode === "vendor" && (
           <>
-            <div>
-              <label className="text-sm font-medium text-teal-900">Business name</label>
-              <input required value={form.businessName} onChange={(e) => setForm({ ...form, businessName: e.target.value })}
-                className="mt-1 w-full rounded-xl border border-teal-900/15 px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-teal-700" />
-            </div>
-            <div>
-              <label className="text-sm font-medium text-teal-900">Category</label>
-              <select value={form.category} onChange={(e) => setForm({ ...form, category: e.target.value })}
-                className="mt-1 w-full rounded-xl border border-teal-900/15 px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-teal-700 capitalize">
+            <Input label="Business name" required value={form.businessName} onChange={(e) => setForm({ ...form, businessName: e.target.value })} />
+            <label className="block">
+              <span className="text-sm font-medium text-teal-900 block mb-1.5">Category</span>
+              <select
+                value={form.category}
+                onChange={(e) => setForm({ ...form, category: e.target.value })}
+                className="w-full rounded-xl border border-teal-900/15 px-4 py-2.5 text-sm capitalize bg-white"
+              >
                 {CATEGORIES.map((c) => <option key={c} value={c}>{c}</option>)}
               </select>
-            </div>
+            </label>
             <p className="text-xs text-teal-950/50">
               You'll be able to submit verification documents (business registration, SLTDA license) from your dashboard after signing up.
             </p>
           </>
         )}
 
-        {error && <p className="text-sm text-red-600">{error}</p>}
-        <button disabled={busy} className="w-full bg-saffron-500 text-teal-950 rounded-full py-3 font-medium hover:bg-saffron-400 transition disabled:opacity-60">
+        <ErrorBanner>{error}</ErrorBanner>
+        <Button disabled={busy} className="w-full" size="lg">
           {busy ? "Creating account…" : "Create account"}
-        </button>
+        </Button>
       </form>
 
       <p className="text-sm text-teal-950/60 mt-6">
-        Already have an account? <Link to="/login" className="text-teal-800 font-medium">Log in</Link>
+        Already have an account? <Link to="/login" className="text-teal-800 font-semibold">Log in</Link>
       </p>
     </div>
   );

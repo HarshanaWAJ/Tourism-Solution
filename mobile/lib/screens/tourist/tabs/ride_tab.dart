@@ -401,10 +401,10 @@ class _VehicleChip extends StatelessWidget {
         margin: const EdgeInsets.only(right: 10),
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
         decoration: BoxDecoration(
-          color: selected ? AppColors.primary.withOpacity(0.1) : const Color(0xFFF1F5F9),
+          color: selected ? AppColors.primary.withOpacity(0.1) : const Color(0xFFEEF6F5),
           borderRadius: BorderRadius.circular(16),
           border: Border.all(
-            color: selected ? AppColors.primary : const Color(0xFFE2E8F0),
+            color: selected ? AppColors.primary : const Color(0xFFE2EAE8),
             width: selected ? 2 : 1,
           ),
         ),

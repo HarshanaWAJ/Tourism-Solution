@@ -1,5 +1,7 @@
 import { useEffect, useState } from "react";
+import { LayoutDashboard } from "lucide-react";
 import { api, imageUrl } from "../../api/client.js";
+import { Spinner } from "../../components/ui.jsx";
 import TaxiFleet from "./TaxiFleet.jsx";
 
 const TABS = ["Overview", "Verification", "Places", "Support Tickets", "Disputes", "Reviews", "Taxi Fleet"];
@@ -9,13 +11,13 @@ export default function AdminCenter() {
 
   return (
     <div className="max-w-6xl mx-auto px-6 py-12">
-      <h1 className="font-display text-3xl font-semibold mb-2">Admin Center</h1>
+      <h1 className="font-display text-3xl font-semibold mb-2 flex items-center gap-2"><LayoutDashboard className="w-7 h-7 text-teal-700" /> Admin Center</h1>
       <p className="text-teal-950/60 mb-8">Verification, moderation, support tickets, analytics, and disputes across the platform.</p>
 
       <div className="flex gap-1 bg-teal-50 rounded-full p-1 mb-8 w-fit flex-wrap">
         {TABS.map((t) => (
           <button key={t} onClick={() => setTab(t)}
-            className={`px-4 py-2 rounded-full text-sm font-medium transition ${tab === t ? "bg-teal-900 text-sand-50" : "text-teal-900/70"}`}>
+            className={`px-4 py-2 rounded-full text-sm font-medium transition ${tab === t ? "bg-teal-900 text-sand-50" : "text-teal-900/70 hover:bg-teal-100/60"}`}>
             {t}
           </button>
         ))}
@@ -35,7 +37,7 @@ export default function AdminCenter() {
 function Overview() {
   const [data, setData] = useState(null);
   useEffect(() => { api.adminOverview().then(setData); }, []);
-  if (!data) return <p className="text-teal-950/50">Loading…</p>;
+  if (!data) return <Spinner />;
 
   const cards = [
     { label: "Tourists", value: data.touristCount },
@@ -53,7 +55,7 @@ function Overview() {
     <div>
       <div className="grid sm:grid-cols-3 lg:grid-cols-5 gap-4 mb-10">
         {cards.map((c) => (
-          <div key={c.label} className="border border-teal-900/10 rounded-2xl p-5 bg-white">
+          <div key={c.label} className="border border-teal-900/10 rounded-2xl p-5 bg-white shadow-card">
             <p className="text-3xl font-display text-teal-900">{c.value}</p>
             <p className="text-sm text-teal-950/60">{c.label}</p>
           </div>
@@ -86,7 +88,7 @@ function Verification() {
     refresh();
   }
 
-  if (!queue) return <p className="text-teal-950/50">Loading…</p>;
+  if (!queue) return <Spinner />;
   if (queue.documents.length === 0) return <p className="text-teal-950/50">No pending verification documents.</p>;
 
   return (
@@ -94,7 +96,7 @@ function Verification() {
       {queue.documents.map((doc) => {
         const vendor = queue.vendors.find((v) => v._id === doc.vendor);
         return (
-          <div key={doc._id} className="border border-teal-900/10 rounded-2xl p-5 bg-white flex items-center justify-between">
+          <div key={doc._id} className="border border-teal-900/10 rounded-2xl p-5 bg-white shadow-card flex items-center justify-between">
             <div>
               <p className="font-medium">{vendor?.businessName || "Vendor"}</p>
               <p className="text-sm text-teal-950/60 capitalize">{doc.type.replace(/_/g, " ")} · <a href={doc.fileUrl} target="_blank" rel="noreferrer" className="underline">view document</a></p>
@@ -140,14 +142,14 @@ function PlaceSubmissions() {
         ))}
       </div>
 
-      {!submissions && <p className="text-teal-950/50">Loading…</p>}
+      {!submissions && <Spinner />}
       {submissions && submissions.length === 0 && (
         <p className="text-teal-950/50">No {statusFilter !== "all" ? statusFilter : ""} place suggestions.</p>
       )}
 
       <div className="space-y-4">
         {submissions?.map((s) => (
-          <div key={s._id} className="border border-teal-900/10 rounded-2xl p-5 bg-white">
+          <div key={s._id} className="border border-teal-900/10 rounded-2xl p-5 bg-white shadow-card">
             <div className="flex items-start justify-between gap-4">
               <div>
                 <p className="font-medium">{s.title} <span className="text-xs font-normal text-teal-950/50 capitalize">· {s.category}</span></p>
@@ -160,7 +162,7 @@ function PlaceSubmissions() {
               </div>
               <span className={`text-xs font-semibold px-2.5 py-1 rounded-full capitalize shrink-0 ${
                 s.status === "approved" ? "bg-teal-800 text-sand-50" :
-                s.status === "rejected" ? "bg-red-100 text-red-600" : "bg-saffron-100 text-saffron-600"
+                s.status === "rejected" ? "bg-ruby-100 text-ruby-700" : "bg-saffron-100 text-saffron-600"
               }`}>
                 {s.status}
               </span>
@@ -177,7 +179,7 @@ function PlaceSubmissions() {
             {s.status === "pending" && (
               <div className="flex gap-2 mt-4">
                 <button onClick={() => decide(s._id, "approved")} className="text-xs font-medium bg-teal-900 text-sand-50 rounded-full px-4 py-2">
-                  Approve &amp; publish
+                  Approve & publish
                 </button>
                 <button onClick={() => decide(s._id, "rejected")} className="text-xs font-medium border border-teal-900/20 rounded-full px-4 py-2">
                   Reject
@@ -203,13 +205,13 @@ function Disputes() {
     refresh();
   }
 
-  if (!disputes) return <p className="text-teal-950/50">Loading…</p>;
+  if (!disputes) return <Spinner />;
   if (disputes.length === 0) return <p className="text-teal-950/50">No disputes.</p>;
 
   return (
     <div className="space-y-4">
       {disputes.map((d) => (
-        <div key={d._id} className="border border-teal-900/10 rounded-2xl p-5 bg-white">
+        <div key={d._id} className="border border-teal-900/10 rounded-2xl p-5 bg-white shadow-card">
           <div className="flex justify-between items-start mb-2">
             <div>
               <p className="font-medium">{d.reason}</p>
@@ -241,17 +243,17 @@ function ReviewModeration() {
     refresh();
   }
 
-  if (!reviews) return <p className="text-teal-950/50">Loading…</p>;
+  if (!reviews) return <Spinner />;
   if (reviews.length === 0) return <p className="text-teal-950/50">Moderation queue is empty.</p>;
 
   return (
     <div className="space-y-4">
       {reviews.map((r) => (
-        <div key={r._id} className="border border-teal-900/10 rounded-2xl p-5 bg-white flex items-center justify-between">
+        <div key={r._id} className="border border-teal-900/10 rounded-2xl p-5 bg-white shadow-card flex items-center justify-between">
           <div>
             <p className="font-medium">{r.author?.name} on {r.listing?.title}</p>
             <p className="text-sm text-teal-950/70">{"★".repeat(r.rating)} — {r.comment}</p>
-            {r.moderationStatus === "flagged" && <p className="text-xs text-red-600 mt-1">Auto-flagged for review</p>}
+            {r.moderationStatus === "flagged" && <p className="text-xs text-ruby-600 mt-1">Auto-flagged for review</p>}
           </div>
           <div className="flex gap-2">
             <button onClick={() => decide(r._id, "approved")} className="text-xs font-medium bg-teal-900 text-sand-50 rounded-full px-4 py-2">Approve</button>
@@ -303,7 +305,7 @@ function SupportTickets() {
         ))}
       </div>
 
-      {!tickets && <p className="text-teal-950/50">Loading support tickets…</p>}
+      {!tickets && <Spinner label="Loading support tickets…" />}
       {tickets && tickets.length === 0 && (
         <p className="text-teal-950/50">No support tickets found.</p>
       )}
@@ -315,7 +317,7 @@ function SupportTickets() {
             <div
               key={t._id}
               className={`border rounded-2xl p-5 bg-white space-y-3 ${
-                isEmergency ? "border-red-300 bg-red-50/30" : "border-teal-900/10"
+                isEmergency ? "border-ruby-500/25 bg-ruby-100/40" : "border-teal-900/10"
               }`}
             >
               <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2">
@@ -325,9 +327,9 @@ function SupportTickets() {
                     <span
                       className={`text-[10px] uppercase font-bold tracking-wider px-2.5 py-0.5 rounded-full ${
                         t.category === "safety" || t.priority === "emergency"
-                          ? "bg-red-600 text-white"
+                          ? "bg-ruby-600 text-white"
                           : t.priority === "high"
-                          ? "bg-amber-500 text-white"
+                          ? "bg-saffron-500 text-teal-950"
                           : "bg-teal-100 text-teal-800"
                       }`}
                     >
@@ -336,12 +338,12 @@ function SupportTickets() {
                     <span
                       className={`text-[10px] uppercase font-semibold px-2.5 py-0.5 rounded-full ${
                         t.status === "open"
-                          ? "bg-amber-100 text-amber-800"
+                          ? "bg-saffron-100 text-saffron-700"
                           : t.status === "in_progress"
-                          ? "bg-blue-100 text-blue-800"
+                          ? "bg-teal-100 text-teal-800"
                           : t.status === "resolved"
-                          ? "bg-emerald-100 text-emerald-800"
-                          : "bg-gray-100 text-gray-700"
+                          ? "bg-teal-100 text-teal-800"
+                          : "bg-teal-950/5 text-teal-950/50"
                       }`}
                     >
                       {t.status.replace("_", " ")}
@@ -358,25 +360,25 @@ function SupportTickets() {
                     <button
                       disabled={busyId === t._id}
                       onClick={() => updateStatus(t._id, "in_progress")}
-                      className="text-xs font-medium border border-blue-300 text-blue-800 bg-blue-50 rounded-full px-3 py-1.5 hover:bg-blue-100 transition disabled:opacity-50"
+                      className="text-xs font-medium border border-teal-700/30 text-teal-800 bg-teal-50 rounded-full px-3 py-1.5 hover:bg-teal-100 transition disabled:opacity-50"
                     >
-                      Mark In Progress
+                      Mark in progress
                     </button>
                   )}
                   {t.status !== "resolved" && (
                     <button
                       disabled={busyId === t._id}
                       onClick={() => updateStatus(t._id, "resolved")}
-                      className="text-xs font-semibold bg-emerald-700 text-white rounded-full px-3.5 py-1.5 hover:bg-emerald-800 transition disabled:opacity-50"
+                      className="text-xs font-semibold bg-teal-700 text-white rounded-full px-3.5 py-1.5 hover:bg-teal-800 transition disabled:opacity-50"
                     >
-                      ✓ Resolve Ticket
+                      Resolve ticket
                     </button>
                   )}
                   {t.status !== "closed" && (
                     <button
                       disabled={busyId === t._id}
                       onClick={() => updateStatus(t._id, "closed")}
-                      className="text-xs font-medium border border-gray-300 text-gray-700 bg-gray-50 rounded-full px-3 py-1.5 hover:bg-gray-100 transition disabled:opacity-50"
+                      className="text-xs font-medium border border-teal-900/15 text-teal-900/70 bg-white rounded-full px-3 py-1.5 hover:bg-teal-50 transition disabled:opacity-50"
                     >
                       Close
                     </button>

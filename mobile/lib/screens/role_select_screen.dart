@@ -93,8 +93,8 @@ class RoleSelectScreen extends StatelessWidget {
               // Tourist Card
               _RoleOptionCard(
                 icon: Icons.explore_rounded,
-                iconColor: const Color(0xFF0D9488),
-                iconBg: const Color(0xFFCCFBF1),
+                iconColor: const Color(0xFF114B4B),
+                iconBg: const Color(0xFFDCEAE8),
                 title: "I'm a Tourist",
                 subtitle: 'Book rides, tuk-tuks & explore island destinations',
                 onTap: () => Navigator.push(
@@ -108,8 +108,8 @@ class RoleSelectScreen extends StatelessWidget {
               // Driver Card
               _RoleOptionCard(
                 icon: Icons.time_to_leave_rounded,
-                iconColor: const Color(0xFF0F4C4C),
-                iconBg: const Color(0xFFE0F2FE),
+                iconColor: const Color(0xFF9C6512),
+                iconBg: const Color(0xFFFBEFD4),
                 title: "I'm a Driver",
                 subtitle: 'Earn flexible income by accepting ride requests',
                 onTap: () => Navigator.push(
@@ -123,7 +123,7 @@ class RoleSelectScreen extends StatelessWidget {
               // Divider with text
               Row(
                 children: [
-                  const Expanded(child: Divider(color: Color(0xFFE2E8F0))),
+                  const Expanded(child: Divider(color: Color(0xFFE2EAE8))),
                   Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 16),
                     child: Text(
@@ -135,7 +135,7 @@ class RoleSelectScreen extends StatelessWidget {
                       ),
                     ),
                   ),
-                  const Expanded(child: Divider(color: Color(0xFFE2E8F0))),
+                  const Expanded(child: Divider(color: Color(0xFFE2EAE8))),
                 ],
               ),
 
@@ -187,7 +187,7 @@ class _RoleOptionCard extends StatelessWidget {
           padding: const EdgeInsets.all(20),
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(20),
-            border: Border.all(color: const Color(0xFFE2E8F0), width: 1.2),
+            border: Border.all(color: const Color(0xFFE2EAE8), width: 1.2),
             boxShadow: [
               BoxShadow(
                 color: Colors.black.withOpacity(0.02),

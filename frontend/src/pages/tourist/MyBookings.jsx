@@ -1,13 +1,15 @@
 import { useEffect, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
+import { CalendarDays, Eye, MapPin, Sparkles, Ticket } from "lucide-react";
 import { api } from "../../api/client.js";
+import { Badge, Button, Card, EmptyState, Spinner } from "../../components/ui.jsx";
 
-const STATUS_COLORS = {
-  pending_confirmation: "bg-saffron-100 text-saffron-600",
-  confirmed: "bg-teal-800 text-sand-50",
-  cancelled: "bg-red-100 text-red-600",
-  completed: "bg-teal-50 text-teal-900",
-  no_show: "bg-red-100 text-red-600",
+const STATUS_TONE = {
+  pending_confirmation: "saffronSoft",
+  confirmed: "teal",
+  cancelled: "rubySoft",
+  completed: "tealSoft",
+  no_show: "rubySoft",
 };
 
 export default function MyBookings() {
@@ -38,119 +40,91 @@ export default function MyBookings() {
 
   return (
     <div className="max-w-5xl mx-auto px-6 py-12">
-      <h1 className="font-display text-3xl font-semibold mb-2">My Trips & Bookings</h1>
+      <h1 className="font-display text-3xl font-semibold mb-2">My trips &amp; bookings</h1>
       <p className="text-teal-950/60 mb-6">Manage your saved trip itineraries and confirmed service bookings.</p>
 
       {justBooked && (
-        <div className="bg-teal-800 text-sand-50 rounded-xl px-4 py-3 mb-6 text-sm">
-          Booking confirmed — reference <strong>{justBooked}</strong>.
-        </div>
+        <Card className="bg-teal-800 text-sand-50 border-none px-4 py-3 mb-6 text-sm flex items-center gap-2">
+          <Ticket className="w-4 h-4" /> Booking confirmed — reference <strong className="ledger">{justBooked}</strong>.
+        </Card>
       )}
 
-      {/* Tabs */}
       <div className="flex gap-4 border-b border-teal-900/10 mb-6">
         <button
           onClick={() => setActiveTab("bookings")}
-          className={`pb-3 text-sm font-semibold border-b-2 transition ${
-            activeTab === "bookings"
-              ? "border-teal-900 text-teal-900"
-              : "border-transparent text-teal-950/50 hover:text-teal-900"
-          }`}
+          className={`pb-3 text-sm font-semibold border-b-2 transition ${activeTab === "bookings" ? "border-teal-900 text-teal-900" : "border-transparent text-teal-950/50 hover:text-teal-900"}`}
         >
-          Booked Listings ({bookings.length})
+          Booked listings ({bookings.length})
         </button>
         <button
           onClick={() => setActiveTab("itineraries")}
-          className={`pb-3 text-sm font-semibold border-b-2 transition ${
-            activeTab === "itineraries"
-              ? "border-teal-900 text-teal-900"
-              : "border-transparent text-teal-950/50 hover:text-teal-900"
-          }`}
+          className={`pb-3 text-sm font-semibold border-b-2 transition ${activeTab === "itineraries" ? "border-teal-900 text-teal-900" : "border-transparent text-teal-950/50 hover:text-teal-900"}`}
         >
-          Saved Trip Plans ({savedItineraries.length})
+          Saved trip plans ({savedItineraries.length})
         </button>
       </div>
 
-      {loading && <p className="text-teal-950/50">Loading your trips…</p>}
+      {loading && <Spinner label="Loading your trips…" />}
 
       {!loading && activeTab === "bookings" && (
-        <>
-          {bookings.length === 0 ? (
-            <p className="text-teal-950/50">No bookings yet — go discover attractions and services.</p>
-          ) : (
-            <div className="space-y-4">
-              {bookings.map((b) => (
-                <div key={b._id} className="border border-teal-900/10 rounded-2xl p-5 flex items-center justify-between gap-4 bg-white shadow-2xs">
-                  <div>
-                    <p className="font-display text-lg font-semibold">{b.listing?.title}</p>
-                    <p className="text-sm text-teal-950/60">{b.vendor?.businessName} · Ref {b.confirmationCode}</p>
-                    <p className="text-sm text-teal-950/60">{b.currency} {b.totalPrice} · {b.partySize} {b.partySize === 1 ? "guest" : "guests"}</p>
-                  </div>
-                  <div className="flex flex-col items-end gap-2">
-                    <span className={`text-xs font-semibold px-2.5 py-1 rounded-full capitalize ${STATUS_COLORS[b.status]}`}>
-                      {b.status.replace("_", " ")}
-                    </span>
-                    {b.status === "pending_confirmation" && (
-                      <button onClick={() => pay(b._id)} className="text-xs font-medium text-teal-900 underline">
-                        Pay now
-                      </button>
-                    )}
-                  </div>
+        bookings.length === 0 ? (
+          <EmptyState icon={Ticket} title="No bookings yet" body="Go discover attractions and services to get started." />
+        ) : (
+          <div className="space-y-4">
+            {bookings.map((b) => (
+              <Card key={b._id} className="p-5 flex items-center justify-between gap-4">
+                <div>
+                  <p className="font-display text-lg font-semibold">{b.listing?.title}</p>
+                  <p className="text-sm text-teal-950/60">{b.vendor?.businessName} · <span className="ledger">Ref {b.confirmationCode}</span></p>
+                  <p className="text-sm text-teal-950/60 ledger">{b.currency} {b.totalPrice} · {b.partySize} {b.partySize === 1 ? "guest" : "guests"}</p>
                 </div>
-              ))}
-            </div>
-          )}
-        </>
+                <div className="flex flex-col items-end gap-2 shrink-0">
+                  <Badge tone={STATUS_TONE[b.status] || "outline"} className="capitalize">{b.status.replace(/_/g, " ")}</Badge>
+                  {b.status === "pending_confirmation" && (
+                    <button onClick={() => pay(b._id)} className="text-xs font-medium text-teal-900 underline">Pay now</button>
+                  )}
+                </div>
+              </Card>
+            ))}
+          </div>
+        )
       )}
 
       {!loading && activeTab === "itineraries" && (
-        <>
-          {savedItineraries.length === 0 ? (
-            <div className="bg-teal-50/50 rounded-2xl p-8 text-center space-y-3 border border-teal-900/10">
-              <p className="text-teal-950/60 font-medium">No saved trip plans yet.</p>
-              <button
-                onClick={() => navigate("/planner")}
-                className="bg-teal-900 text-sand-50 px-5 py-2.5 rounded-full text-xs font-semibold hover:bg-teal-800 transition"
-              >
-                ⚡ Plan a Trip Now
-              </button>
-            </div>
-          ) : (
-            <div className="space-y-4">
-              {savedItineraries.map((it) => (
-                <div key={it._id} className="border border-teal-900/10 rounded-2xl p-5 bg-white shadow-2xs space-y-3">
-                  <div className="flex justify-between items-start flex-wrap gap-2 border-b border-teal-900/5 pb-3">
-                    <div>
-                      <h3 className="font-display text-xl font-semibold text-teal-950">{it.title}</h3>
-                      <p className="text-xs text-teal-950/60 font-medium mt-0.5">
-                        📅 {new Date(it.startDate).toLocaleDateString()} – {new Date(it.endDate).toLocaleDateString()} • {it.items?.length || 0} scheduled stops
-                      </p>
-                    </div>
-                    <button
-                      onClick={() => navigate("/planner")}
-                      className="bg-saffron-500 hover:bg-saffron-400 text-teal-950 px-4 py-2 rounded-xl text-xs font-semibold transition"
-                    >
-                      👁️ View Detailed Plan in Planner
-                    </button>
+        savedItineraries.length === 0 ? (
+          <EmptyState
+            icon={Sparkles}
+            title="No saved trip plans yet"
+            body="Let the AI planner build an itinerary around your interests and budget."
+            action={<Button onClick={() => navigate("/planner")}><Sparkles className="w-4 h-4" /> Plan a trip now</Button>}
+          />
+        ) : (
+          <div className="space-y-4">
+            {savedItineraries.map((it) => (
+              <Card key={it._id} className="p-5 space-y-3">
+                <div className="flex justify-between items-start flex-wrap gap-2 border-b border-teal-900/5 pb-3">
+                  <div>
+                    <h3 className="font-display text-xl font-semibold text-teal-950">{it.title}</h3>
+                    <p className="text-xs text-teal-950/60 font-medium mt-0.5 flex items-center gap-1.5">
+                      <CalendarDays className="w-3.5 h-3.5" /> {new Date(it.startDate).toLocaleDateString()} – {new Date(it.endDate).toLocaleDateString()} · {it.items?.length || 0} scheduled stops
+                    </p>
                   </div>
-
-                  {/* Summary Preview of Items */}
-                  <div className="space-y-2 pt-1">
-                    {it.items?.slice(0, 4).map((item, idx) => (
-                      <div key={idx} className="text-xs text-teal-950/80 flex items-center justify-between bg-teal-50/40 p-2 rounded-lg border border-teal-900/5">
-                        <span className="font-medium">Day {item.day}: {item.title}</span>
-                        {item.locationName && <span className="text-teal-950/50">📍 {item.locationName}</span>}
-                      </div>
-                    ))}
-                    {it.items?.length > 4 && (
-                      <p className="text-xs text-teal-950/40 italic">+{it.items.length - 4} more scheduled stops...</p>
-                    )}
-                  </div>
+                  <Button size="sm" onClick={() => navigate("/planner")}><Eye className="w-3.5 h-3.5" /> View in planner</Button>
                 </div>
-              ))}
-            </div>
-          )}
-        </>
+
+                <div className="space-y-2 pt-1">
+                  {it.items?.slice(0, 4).map((item, idx) => (
+                    <div key={idx} className="text-xs text-teal-950/80 flex items-center justify-between bg-teal-50/40 p-2 rounded-lg border border-teal-900/5">
+                      <span className="font-medium">Day {item.day}: {item.title}</span>
+                      {item.locationName && <span className="text-teal-950/50 flex items-center gap-1"><MapPin className="w-3 h-3" /> {item.locationName}</span>}
+                    </div>
+                  ))}
+                  {it.items?.length > 4 && <p className="text-xs text-teal-950/40 italic">+{it.items.length - 4} more scheduled stops…</p>}
+                </div>
+              </Card>
+            ))}
+          </div>
+        )
       )}
     </div>
   );

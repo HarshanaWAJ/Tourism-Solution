@@ -96,7 +96,7 @@ class TripPlanDetailSheet extends StatelessWidget {
                   decoration: BoxDecoration(
                     color: Colors.white,
                     borderRadius: BorderRadius.circular(20),
-                    border: Border.all(color: const Color(0xFFE2E8F0)),
+                    border: Border.all(color: const Color(0xFFE2EAE8)),
                     boxShadow: [
                       BoxShadow(
                         color: Colors.black.withOpacity(0.02),
@@ -170,18 +170,18 @@ class TripPlanDetailSheet extends StatelessWidget {
                                     margin: const EdgeInsets.only(bottom: 12, top: 4),
                                     padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                                     decoration: BoxDecoration(
-                                      color: const Color(0xFFFFFBEB),
+                                      color: const Color(0xFFFBEFD4),
                                       borderRadius: BorderRadius.circular(10),
-                                      border: Border.all(color: const Color(0xFFFDE68A)),
+                                      border: Border.all(color: const Color(0xFFEBBE5B)),
                                     ),
                                     child: Row(
                                       mainAxisSize: MainAxisSize.min,
                                       children: [
-                                        const Icon(Icons.directions_car_rounded, size: 14, color: Color(0xFFD97706)),
+                                        const Icon(Icons.directions_car_rounded, size: 14, color: Color(0xFF9C6512)),
                                         const SizedBox(width: 6),
                                         Text(
                                           'Travel: $travelDuration ($travelDistance)',
-                                          style: const TextStyle(fontSize: 11.5, fontWeight: FontWeight.w600, color: Color(0xFFB45309)),
+                                          style: const TextStyle(fontSize: 11.5, fontWeight: FontWeight.w600, color: Color(0xFF9C6512)),
                                         ),
                                       ],
                                     ),
@@ -193,7 +193,7 @@ class TripPlanDetailSheet extends StatelessWidget {
                                     Container(
                                       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                                       decoration: BoxDecoration(
-                                        color: const Color(0xFFF1F5F9),
+                                        color: const Color(0xFFEEF6F5),
                                         borderRadius: BorderRadius.circular(6),
                                       ),
                                       child: Text(

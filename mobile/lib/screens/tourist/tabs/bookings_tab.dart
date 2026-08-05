@@ -266,7 +266,7 @@ class _RideCard extends StatelessWidget {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: const Color(0xFFE2E8F0)),
+        border: Border.all(color: const Color(0xFFE2EAE8)),
         boxShadow: [
           BoxShadow(
             color: Colors.black.withOpacity(0.03),
@@ -365,7 +365,7 @@ class _BookingCard extends StatelessWidget {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: const Color(0xFFE2E8F0)),
+        border: Border.all(color: const Color(0xFFE2EAE8)),
         boxShadow: [
           BoxShadow(
             color: Colors.black.withOpacity(0.03),
@@ -431,7 +431,7 @@ class _SavedTripCard extends StatelessWidget {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: const Color(0xFFE2E8F0)),
+        border: Border.all(color: const Color(0xFFE2EAE8)),
         boxShadow: [
           BoxShadow(
             color: Colors.black.withOpacity(0.03),
@@ -501,7 +501,7 @@ class _RideStatusPill extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    Color bg = const Color(0xFFF1F5F9);
+    Color bg = const Color(0xFFEEF6F5);
     Color text = AppColors.textPrimary;
 
     switch (status) {
@@ -511,8 +511,8 @@ class _RideStatusPill extends StatelessWidget {
         break;
       case 'in_progress':
       case 'accepted':
-        bg = const Color(0xFFFEF3C7);
-        text = const Color(0xFFD97706);
+        bg = const Color(0xFFFBEFD4);
+        text = const Color(0xFF9C6512);
         break;
       case 'cancelled':
         bg = AppColors.errorBg;
@@ -534,7 +534,7 @@ class _BookingStatusPill extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    Color bg = const Color(0xFFF1F5F9);
+    Color bg = const Color(0xFFEEF6F5);
     Color text = AppColors.textPrimary;
 
     switch (status) {
@@ -543,8 +543,8 @@ class _BookingStatusPill extends StatelessWidget {
         text = AppColors.successText;
         break;
       case 'pending_confirmation':
-        bg = const Color(0xFFFEF3C7);
-        text = const Color(0xFFD97706);
+        bg = const Color(0xFFFBEFD4);
+        text = const Color(0xFF9C6512);
         break;
       case 'cancelled':
         bg = AppColors.errorBg;

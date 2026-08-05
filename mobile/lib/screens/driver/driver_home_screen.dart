@@ -362,7 +362,7 @@ class _DriverHomeScreenState extends State<DriverHomeScreen> {
                   Container(
                     padding: const EdgeInsets.all(14),
                     decoration: BoxDecoration(
-                      color: const Color(0xFFF1F5F9),
+                      color: const Color(0xFFEEF6F5),
                       borderRadius: BorderRadius.circular(14),
                     ),
                     child: Row(
@@ -390,7 +390,7 @@ class _DriverHomeScreenState extends State<DriverHomeScreen> {
                           onPressed: () => setState(() => _incomingRequest = null),
                           style: OutlinedButton.styleFrom(
                             foregroundColor: AppColors.textSecondary,
-                            side: const BorderSide(color: Color(0xFFCBD5E1)),
+                            side: const BorderSide(color: Color(0xFFCBD8D5)),
                           ),
                           child: const Text('Decline'),
                         ),

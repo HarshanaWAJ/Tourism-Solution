@@ -1,3 +1,6 @@
+import { ShieldCheck } from "lucide-react";
+import { Badge } from "./ui.jsx";
+
 const BADGE_LABELS = {
   business_registration: "Registered Business",
   sltda_license: "SLTDA Licensed",
@@ -11,17 +14,12 @@ export default function TrustBadge({ vendor }) {
 
   return (
     <div className="flex flex-wrap items-center gap-2">
-      <span
-        className={`inline-flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1 rounded-full ${
-          verified ? "bg-teal-800 text-sand-50" : "bg-teal-950/10 text-teal-900/70"
-        }`}
-      >
-        {verified ? "✓ Verified vendor" : "Unverified vendor"}
-      </span>
+      <Badge tone={verified ? "teal" : "outline"}>
+        {verified && <ShieldCheck className="w-3.5 h-3.5" />}
+        {verified ? "Verified vendor" : "Unverified vendor"}
+      </Badge>
       {(vendor.verificationBadges || []).map((b) => (
-        <span key={b} className="text-xs px-2.5 py-1 rounded-full bg-saffron-100 text-saffron-600 font-medium">
-          {BADGE_LABELS[b] || b}
-        </span>
+        <Badge key={b} tone="saffronSoft">{BADGE_LABELS[b] || b}</Badge>
       ))}
     </div>
   );
